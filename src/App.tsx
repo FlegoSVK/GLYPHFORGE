@@ -162,8 +162,11 @@ export default function App() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [savedProjects, setSavedProjects] = useState<Omit<Project, 'fontBuffer' | 'charsData'>[]>([]);
-  const [stylisticAdaptation, setStylisticAdaptation] = useState(false);
+  const [activeDragTransform, setActiveDragTransform] = useState<{ x: number, y: number } | null>(null);
+  const [activeDragTarget, setActiveDragTarget] = useState<'diacritic' | 'base' | null>(null);
+  const [activeDragChar, setActiveDragChar] = useState<string | null>(null);
   const [charFilter, setCharFilter] = useState<'all' | 'modified' | 'original'>('all');
+  const [stylisticAdaptation, setStylisticAdaptation] = useState(false);
   const [sizeFilter, setSizeFilter] = useState<'all' | 'heading' | 'body' | 'micro'>('all');
   const [wrapText, setWrapText] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(true);
@@ -815,6 +818,16 @@ export default function App() {
                   stylisticAdaptation={stylisticAdaptation}
                   showHeatmap={showHeatmap}
                   editTarget={editTarget}
+                  onDrag={(t, target) => {
+                    setActiveDragTransform(t);
+                    setActiveDragTarget(target);
+                    setActiveDragChar(selectedChar);
+                  }}
+                  onDragEnd={() => {
+                    setActiveDragTransform(null);
+                    setActiveDragTarget(null);
+                    setActiveDragChar(null);
+                  }}
                 />
               ) : (
                 <div className="text-zinc-600 flex flex-col items-center">
@@ -874,7 +887,17 @@ export default function App() {
               "flex-1 min-h-0 transition-all duration-300",
               sizeFilter === 'heading' ? 'h-48' : sizeFilter === 'body' ? 'h-32' : sizeFilter === 'micro' ? 'h-24' : 'flex-1'
             )}>
-              <TextTester font={font} chars={chars} stylisticAdaptation={stylisticAdaptation} sizeFilter={sizeFilter} wrapText={wrapText} globalShiftX={globalShiftX} selectedChar={selectedChar} />
+              <TextTester 
+                font={font} 
+                chars={chars} 
+                stylisticAdaptation={stylisticAdaptation} 
+                sizeFilter={sizeFilter} 
+                wrapText={wrapText} 
+                globalShiftX={globalShiftX} 
+                selectedChar={selectedChar} 
+                activeDragTransform={activeDragChar === selectedChar ? activeDragTransform : null}
+                activeDragTarget={activeDragChar === selectedChar ? activeDragTarget : null}
+              />
             </div>
           </div>
         </main>

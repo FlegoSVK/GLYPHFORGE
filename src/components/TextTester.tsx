@@ -10,12 +10,14 @@ interface TextTesterProps {
   wrapText: boolean;
   globalShiftX?: number;
   selectedChar?: string;
+  activeDragTransform?: { x: number, y: number } | null;
+  activeDragTarget?: 'diacritic' | 'base' | null;
 }
 
 const DIACRITICS_TEXT = "Á Ä Č Ď É Ě Í Ĺ Ľ Ň Ó Ô Ŕ Ř Š Ť Ú Ů Ý Ž á ä č ď é ě í ĺ ľ ň ó ô ŕ ř š ť ú ů ý ž";
 const TEST_TEXT = "Vypoj kŕdeľ šťastných dravcov zmäteným hučaním.";
 
-export const TextTester = React.memo(({ font, chars, stylisticAdaptation, sizeFilter, wrapText, globalShiftX = 0, selectedChar }: TextTesterProps) => {
+export const TextTester = React.memo(({ font, chars, stylisticAdaptation, sizeFilter, wrapText, globalShiftX = 0, selectedChar, activeDragTransform, activeDragTarget }: TextTesterProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   
@@ -84,6 +86,18 @@ export const TextTester = React.memo(({ font, chars, stylisticAdaptation, sizeFi
           diacriticPath = info.svgDiacritic ? info.svgDiacritic.path : (info.diacriticGlyph ? getPathD(info.diacriticGlyph) : '');
           if (info.diacriticTransform) transform = { ...transform, ...info.diacriticTransform };
           if (info.baseTransform) baseTransform = { ...baseTransform, ...info.baseTransform };
+          
+          // Apply active drag transform if this char is being dragged
+          if (char === selectedChar && activeDragTransform) {
+            if (activeDragTarget === 'diacritic') {
+              transform.x = activeDragTransform.x;
+              transform.y = activeDragTransform.y;
+            } else if (activeDragTarget === 'base') {
+              baseTransform.x = activeDragTransform.x;
+              baseTransform.y = activeDragTransform.y;
+            }
+          }
+          
           isScaledToLowercase = !!info.isScaledToLowercase;
           hasOverlap = !!info.anomalies?.includes('Diakritika sa prekrýva so základným znakom');
         } else {

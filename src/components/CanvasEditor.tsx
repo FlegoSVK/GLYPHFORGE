@@ -14,6 +14,8 @@ interface CanvasEditorProps {
   globalShiftX?: number;
   showHeatmap?: boolean;
   editTarget?: 'diacritic' | 'base';
+  onDrag?: (transform: { x: number, y: number }, target: 'diacritic' | 'base') => void;
+  onDragEnd?: () => void;
 }
 
 export function CanvasEditor({ 
@@ -22,7 +24,9 @@ export function CanvasEditor({
   stylisticAdaptation = false,
   globalShiftX = 0,
   showHeatmap = false,
-  editTarget = 'diacritic'
+  editTarget = 'diacritic',
+  onDrag,
+  onDragEnd
 }: CanvasEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [viewBox, setViewBox] = useState({ x: 0, y: 0, width: 1000, height: 1000 });
@@ -30,6 +34,7 @@ export function CanvasEditor({
   const [isPanning, setIsPanning] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragDelta, setDragDelta] = useState<{ dx: number, dy: number } | null>(null);
+  const [pendingTransform, setPendingTransform] = useState<{ x: number, y: number } | null>(null);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [spacePressed, setSpacePressed] = useState(false);
   const [currentStroke, setCurrentStroke] = useState<string | null>(null);
@@ -40,6 +45,14 @@ export function CanvasEditor({
   const unitsPerEm = font.unitsPerEm;
   const ascender = font.ascender;
   const descender = font.descender;
+
+  const diacriticGroupRef = useRef<SVGGElement>(null);
+  const baseGroupRef = useRef<SVGGElement>(null);
+
+  useEffect(() => {
+    // Clear pending transform when the actual character data changes
+    setPendingTransform(null);
+  }, [charInfo.diacriticTransform, charInfo.baseTransform, charInfo.char]);
 
   useEffect(() => {
     const resetView = () => {
@@ -161,11 +174,26 @@ export function CanvasEditor({
       const dy = pt.y - panStart.y;
       setViewBox(prev => ({ ...prev, x: prev.x - dx, y: prev.y - dy }));
     } else if (isDragging) {
+      const dx = pt.x - dragStart.x;
+      const dy = pt.y - dragStart.y;
+      
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
       requestRef.current = requestAnimationFrame(() => {
-        const dx = pt.x - dragStart.x;
-        const dy = pt.y - dragStart.y;
         setDragDelta({ dx, dy });
+        
+        // Directly update DOM for maximum smoothness
+        const activeRef = editTarget === 'base' ? baseGroupRef : diacriticGroupRef;
+        if (activeRef.current) {
+          const t = editTarget === 'base' 
+            ? (charInfo.baseTransform || { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 })
+            : (charInfo.diacriticTransform || { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 });
+          
+          const newPos = { x: t.x + dx, y: t.y - dy };
+          if (onDrag) onDrag(newPos, editTarget);
+
+          const transformStr = `translate(${t.x + dx + (editTarget === 'diacritic' ? globalShiftX : 0)}, ${-(t.y - dy)}) rotate(${t.rotation || 0}) skewX(${t.skewX || 0}) skewY(${t.skewY || 0}) scale(${t.scaleX * (t.flipX ? -1 : 1)}, ${t.scaleY * (t.flipY ? -1 : 1)})`;
+          activeRef.current.setAttribute('transform', transformStr);
+        }
       });
     }
   };
@@ -189,16 +217,20 @@ export function CanvasEditor({
         ? (charInfo.baseTransform || { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 })
         : (charInfo.diacriticTransform || { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 });
         
-      onTransformChange({
+      const newPos = {
         x: current.x + dragDelta.dx,
         y: current.y - dragDelta.dy
-      }, editTarget);
+      };
+      
+      setPendingTransform(newPos);
+      onTransformChange(newPos, editTarget);
     }
     
     setIsDragging(false);
     setDragDelta(null);
     setIsPanning(false);
     setIsErasing(false);
+    if (onDragEnd) onDragEnd();
   };
 
   // Extract paths
@@ -219,6 +251,17 @@ export function CanvasEditor({
 
   const currentTransform = { ...transform };
   const currentBaseTransform = { ...baseTransform };
+
+  // Apply pending transform if we just finished dragging but props haven't updated yet
+  if (pendingTransform) {
+    if (editTarget === 'diacritic') {
+      currentTransform.x = pendingTransform.x;
+      currentTransform.y = pendingTransform.y;
+    } else {
+      currentBaseTransform.x = pendingTransform.x;
+      currentBaseTransform.y = pendingTransform.y;
+    }
+  }
 
   if (isDragging && dragDelta) {
     if (editTarget === 'diacritic') {
@@ -405,17 +448,24 @@ export function CanvasEditor({
         {/* Base Glyph */}
         {basePath && (charInfo.layerVisibility?.base ?? true) && (
           <g 
+            ref={baseGroupRef}
             mask="url(#eraser-mask-base)" 
-            style={{ opacity: charInfo.layerOpacity?.base ?? 1 }}
+            style={{ 
+              opacity: charInfo.layerOpacity?.base ?? 1,
+              willChange: isDragging ? 'transform' : 'auto'
+            }}
             transform={`translate(${currentBaseTransform.x}, ${-currentBaseTransform.y}) rotate(${currentBaseTransform.rotation || 0}) skewX(${currentBaseTransform.skewX || 0}) skewY(${currentBaseTransform.skewY || 0}) scale(${currentBaseTransform.scaleX * (currentBaseTransform.flipX ? -1 : 1)}, ${currentBaseTransform.scaleY * (currentBaseTransform.flipY ? -1 : 1)})`}
             onMouseDown={(e) => { e.stopPropagation(); handlePointerDown(e, 'base'); }}
             onTouchStart={(e) => { e.stopPropagation(); handlePointerDown(e, 'base'); }}
-            className={spacePressed ? 'pointer-events-none' : (editTarget === 'base' ? 'cursor-move' : 'cursor-default')}
+            className={cn(
+              "transition-colors duration-75",
+              spacePressed ? 'pointer-events-none' : (editTarget === 'base' ? 'cursor-move' : 'cursor-default')
+            )}
           >
             <path 
               d={basePath} 
               fill="currentColor" 
-              className={editTarget === 'base' ? "text-zinc-200 hover:text-zinc-100 transition-colors duration-75" : "text-zinc-300"}
+              className={editTarget === 'base' ? "text-zinc-200 hover:text-zinc-100" : "text-zinc-300"}
             />
             {/* Bounding box for easier grabbing */}
             <path 
@@ -431,17 +481,24 @@ export function CanvasEditor({
         {/* Diacritic Glyph */}
         {diacriticPath && (charInfo.layerVisibility?.diacritic ?? true) && (
           <g 
+            ref={diacriticGroupRef}
             transform={`translate(${currentTransform.x + globalShiftX}, ${-currentTransform.y}) rotate(${currentTransform.rotation || 0}) skewX(${currentTransform.skewX || 0}) skewY(${currentTransform.skewY || 0}) scale(${currentTransform.scaleX * (currentTransform.flipX ? -1 : 1)}, ${currentTransform.scaleY * (currentTransform.flipY ? -1 : 1)})`}
             onMouseDown={(e) => { e.stopPropagation(); handlePointerDown(e, 'diacritic'); }}
             onTouchStart={(e) => { e.stopPropagation(); handlePointerDown(e, 'diacritic'); }}
-            className={spacePressed ? 'pointer-events-none' : (editTarget === 'diacritic' ? 'cursor-move' : 'cursor-default')}
+            className={cn(
+              "transition-colors duration-75",
+              spacePressed ? 'pointer-events-none' : (editTarget === 'diacritic' ? 'cursor-move' : 'cursor-default')
+            )}
             filter={(stylisticAdaptation && !isDragging) ? "url(#stylistic-adaptation-filter)" : undefined}
-            style={{ opacity: charInfo.layerOpacity?.diacritic ?? 1 }}
+            style={{ 
+              opacity: charInfo.layerOpacity?.diacritic ?? 1,
+              willChange: isDragging ? 'transform' : 'auto'
+            }}
           >
             <path 
               d={diacriticPath} 
               fill="currentColor" 
-              className={editTarget === 'diacritic' ? "text-indigo-500 hover:text-indigo-400 transition-colors duration-75" : "text-indigo-500/80"}
+              className={editTarget === 'diacritic' ? "text-indigo-500 hover:text-indigo-400" : "text-indigo-500/80"}
             />
             {/* Bounding box for easier grabbing */}
             <path 

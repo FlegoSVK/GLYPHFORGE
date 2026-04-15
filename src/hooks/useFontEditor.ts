@@ -670,9 +670,23 @@ function calculateAutoTransform(
   // Try to get standard metrics from font if available
   let capHeight = 700;
   let xHeight = 500;
-  if (font?.tables?.os2) {
-    if (font.tables.os2.sCapHeight) capHeight = font.tables.os2.sCapHeight;
-    if (font.tables.os2.sxHeight) xHeight = font.tables.os2.sxHeight;
+  
+  if (font) {
+    // Try to derive from actual glyphs for better accuracy than OS/2 table which is often wrong or missing
+    const hGlyph = font.charToGlyph('H');
+    const xGlyph = font.charToGlyph('x');
+    if (hGlyph && hGlyph.unicode !== undefined) {
+      const hBox = hGlyph.getBoundingBox();
+      if (hBox.y2 > 0) capHeight = hBox.y2;
+    }
+    if (xGlyph && xGlyph.unicode !== undefined) {
+      const xBox = xGlyph.getBoundingBox();
+      if (xBox.y2 > 0) xHeight = xBox.y2;
+    }
+
+    // Fallback to OS/2 if glyphs didn't give us good values
+    if (capHeight === 700 && font.tables?.os2?.sCapHeight) capHeight = font.tables.os2.sCapHeight;
+    if (xHeight === 500 && font.tables?.os2?.sxHeight) xHeight = font.tables.os2.sxHeight;
   }
 
   // Heuristic to determine if we should align to cap height or x-height
@@ -680,11 +694,10 @@ function calculateAutoTransform(
   const isTall = baseBox.y2 > xHeight * 1.1;
   
   // Use standard metrics (capHeight/xHeight) as the primary reference.
-  // This ignores overshoot (e.g. in C, O, S) and ensures diacritics align horizontally 
-  // across different characters, making them "sit" better on the letters.
   const referenceTop = isTall ? capHeight : xHeight;
   
-  const gap = capHeight * 0.015; 
+  // Make gap proportional to the reference height for consistency between upper/lower case
+  const gap = referenceTop * 0.012; 
 
   let scaleX = 1;
   let scaleY = 1;
@@ -692,7 +705,7 @@ function calculateAutoTransform(
   let y = 0;
 
   if (isSvg) {
-    const targetHeight = capHeight * 0.25;
+    const targetHeight = referenceTop * 0.25;
     scaleX = scaleY = targetHeight / 100;
     
     if (diacriticType === 'apostrophe') {
@@ -700,8 +713,7 @@ function calculateAutoTransform(
       y = referenceTop * 0.88 + 100 * scaleX;
     } else {
       x = baseBox.x1 + (baseWidth - 100 * scaleX) / 2;
-      // For caron in SVG, we also want it closer
-      const currentGap = diacriticType === 'caron' ? 0 : gap;
+      const currentGap = diacriticType === 'caron' ? -referenceTop * 0.005 : gap;
       y = referenceTop + currentGap + 100 * scaleY;
     }
   } else if (diacriticGlyph) {
@@ -711,19 +723,23 @@ function calculateAutoTransform(
 
     if (diacriticType === 'apostrophe') {
       x = baseBox.x2 + gap * 0.3 - diaBox.x1;
-      // Position apostrophe-caron relative to the top of the letter
       y = referenceTop * 0.92 - diaBox.y1;
     } else {
       x = baseXCenter - diaXCenter;
-      // For caron (ˇ), we use zero gap relative to the standard height (capHeight/xHeight).
-      // This allows the caron to "hug" letters with overshoot (like C, S, Ž) 
-      // and stay consistently aligned with flat letters (like Z, T, N).
-      const currentGap = diacriticType === 'caron' ? -capHeight * 0.005 : gap;
-      y = referenceTop + currentGap - diaBox.y1;
+      // Proportional caron gap
+      const currentGap = diacriticType === 'caron' ? -referenceTop * 0.005 : gap;
+      
+      const isFlipped = diacriticType === 'caron' && !font?.charToGlyphIndex('caron') && font?.charToGlyphIndex('circumflex');
+      
+      if (isFlipped) {
+        y = referenceTop + currentGap + diaBox.y2;
+      } else {
+        y = referenceTop + currentGap - diaBox.y1;
+      }
     }
   }
 
-  return { x, y, scaleX, scaleY, rotation: 0, skewX: 0, skewY: 0, flipX: false, flipY: false };
+  return { x, y, scaleX, scaleY, rotation: 0, skewX: 0, skewY: 0, flipX: false, flipY: false, referenceTop, baseWidth };
 }
 
 export function useFontEditor() {
@@ -1943,7 +1959,7 @@ export function useFontEditor() {
         const style = sourceInfo.svgDiacritic.style as FontStyle | 'custom';
         if (info.baseGlyph) {
           const svgPath = style === 'custom' ? sourceInfo.svgDiacritic.path : SVG_DIACRITICS[style as FontStyle][diacriticType];
-          const autoTransform = calculateAutoTransform(info.baseGlyph, diacriticType, undefined, true);
+          const autoTransform = calculateAutoTransform(info.baseGlyph, diacriticType, undefined, true, font);
           
           if (sourceInfo.diacriticTransform?.flipY) autoTransform.flipY = true;
           if (sourceInfo.diacriticTransform?.flipX) autoTransform.flipX = true;
@@ -1959,7 +1975,7 @@ export function useFontEditor() {
         }
       } else if (sourceInfo.diacriticGlyph) {
         if (info.baseGlyph) {
-          const autoTransform = calculateAutoTransform(info.baseGlyph, diacriticType, sourceInfo.diacriticGlyph, false);
+          const autoTransform = calculateAutoTransform(info.baseGlyph, diacriticType, sourceInfo.diacriticGlyph, false, font);
           
           // If the source has a flipped transform (e.g. caron from circumflex), carry over the flip
           if (sourceInfo.diacriticTransform?.flipY) {
@@ -2008,11 +2024,18 @@ export function useFontEditor() {
       sourceInfo.baseGlyph, 
       diacriticType, 
       sourceInfo.diacriticGlyph, 
-      !!sourceInfo.svgDiacritic
+      !!sourceInfo.svgDiacritic,
+      font
     );
 
     const offsetX = sourceInfo.diacriticTransform.x - sourceAuto.x;
     const offsetY = sourceInfo.diacriticTransform.y - sourceAuto.y;
+    
+    // Calculate proportional offsets based on reference height (capHeight vs xHeight)
+    // and reference width (baseWidth)
+    const relOffsetX = offsetX / (sourceAuto.baseWidth || 500);
+    const relOffsetY = offsetY / (sourceAuto.referenceTop || 700);
+    
     const relScaleX = sourceInfo.diacriticTransform.scaleX / (sourceAuto.scaleX || 1);
     const relScaleY = sourceInfo.diacriticTransform.scaleY / (sourceAuto.scaleY || 1);
 
@@ -2031,15 +2054,20 @@ export function useFontEditor() {
         targetInfo.baseGlyph, 
         targetType, 
         targetInfo.diacriticGlyph, 
-        !!targetInfo.svgDiacritic
+        !!targetInfo.svgDiacritic,
+        font
       );
+
+      // Apply proportional offsets
+      const adjustedOffsetX = relOffsetX * (targetAuto.baseWidth || 500);
+      const adjustedOffsetY = relOffsetY * (targetAuto.referenceTop || 700);
 
       newChars[char] = {
         ...targetInfo,
         status: targetInfo.status === 'ok' ? 'edited' : targetInfo.status,
         diacriticTransform: {
-          x: targetAuto.x + offsetX,
-          y: targetAuto.y + offsetY,
+          x: targetAuto.x + adjustedOffsetX,
+          y: targetAuto.y + adjustedOffsetY,
           scaleX: targetAuto.scaleX * relScaleX,
           scaleY: targetAuto.scaleY * relScaleY,
           rotation: sourceInfo.diacriticTransform.rotation,
@@ -2063,7 +2091,9 @@ export function useFontEditor() {
     if (!info) return;
 
     const diacriticType = getDiacriticType(char);
-    const autoTransform = info.baseGlyph ? calculateAutoTransform(info.baseGlyph, diacriticType || 'acute', undefined, true) : { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 };
+    const autoTransform = info.baseGlyph 
+      ? calculateAutoTransform(info.baseGlyph, diacriticType || 'acute', undefined, true, font) 
+      : { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0, flipX: false, flipY: false, referenceTop: 700, baseWidth: 500 };
 
     const newChars = { ...chars };
     newChars[char] = {
@@ -2134,7 +2164,9 @@ export function useFontEditor() {
 
     if (!info || !diacriticGlyph) return;
 
-    const autoTransform = info.baseGlyph ? calculateAutoTransform(info.baseGlyph, 'acute', diacriticGlyph, false) : { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 };
+    const autoTransform = info.baseGlyph 
+      ? calculateAutoTransform(info.baseGlyph, 'acute', diacriticGlyph, false, font) 
+      : { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0, flipX: false, flipY: false, referenceTop: 700, baseWidth: 500 };
 
     const newChars = { ...chars };
     newChars[char] = {
@@ -2152,7 +2184,10 @@ export function useFontEditor() {
     const targetInfo = chars[targetChar];
     if (!sourceInfo || !sourceInfo.diacriticGlyph || !targetInfo) return;
 
-    const autoTransform = targetInfo.baseGlyph ? calculateAutoTransform(targetInfo.baseGlyph, 'acute', sourceInfo.diacriticGlyph, false, font || undefined) : { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0, flipX: false, flipY: false };
+    const diacriticType = getDiacriticType(sourceChar) || 'acute';
+    const autoTransform = targetInfo.baseGlyph 
+      ? calculateAutoTransform(targetInfo.baseGlyph, diacriticType, sourceInfo.diacriticGlyph, false, font || undefined) 
+      : { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0, flipX: false, flipY: false, referenceTop: 700, baseWidth: 500 };
     
     if (sourceInfo.diacriticTransform?.flipY) autoTransform.flipY = true;
     if (sourceInfo.diacriticTransform?.flipX) autoTransform.flipX = true;
