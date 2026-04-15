@@ -1344,14 +1344,20 @@ export default function App() {
                   ) : (
                     <div className="space-y-2 px-1">
                       {/* Height Ratio */}
-                      <div className="flex items-center justify-between text-[10px]">
+                      <div className={cn(
+                        "flex items-center justify-between text-[10px] px-1 py-0.5 rounded border",
+                        analysis.heightRatio > 40 || analysis.heightRatio < 10 ? "border-rose-500/50 bg-rose-500/5" : "border-transparent"
+                      )}>
                         <span className="text-zinc-400">Pomer výšky (voči základu):</span>
                         <span className={cn("font-medium", analysis.heightRatio > 40 || analysis.heightRatio < 10 ? "text-amber-400" : "text-emerald-400")}>
                           {analysis.heightRatio.toFixed(1)}%
                         </span>
                       </div>
                       {/* Width Ratio */}
-                      <div className="flex items-center justify-between text-[10px]">
+                      <div className={cn(
+                        "flex items-center justify-between text-[10px] px-1 py-0.5 rounded border",
+                        analysis.widthRatio > 80 ? "border-rose-500/50 bg-rose-500/5" : "border-transparent"
+                      )}>
                         <span className="text-zinc-400">Pomer šírky (voči základu):</span>
                         <span className={cn("font-medium", analysis.widthRatio > 80 ? "text-amber-400" : "text-emerald-400")}>
                           {analysis.widthRatio.toFixed(1)}%
