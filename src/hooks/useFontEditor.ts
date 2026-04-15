@@ -1242,6 +1242,17 @@ export function useFontEditor() {
         if (otherPaths.length > 0) {
           const diacriticItem = new scope.Group(otherPaths.map(p => p.clone()));
           diacriticBounds = diacriticItem.bounds;
+          
+          // Check for overlap between base and diacritic
+          let overlaps = false;
+          otherPaths.forEach(p => {
+            if (mainPath.intersects(p) || mainPath.contains(p.bounds.center)) {
+              overlaps = true;
+            }
+          });
+          if (overlaps) {
+            anomalies.push('Diakritika sa prekrýva so základným znakom');
+          }
         }
       }
 

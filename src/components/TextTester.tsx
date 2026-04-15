@@ -63,7 +63,7 @@ export const TextTester = React.memo(({ font, chars, stylisticAdaptation, sizeFi
     for (let w = 0; w < words.length; w++) {
       const word = words[w];
       let wordWidth = 0;
-      const wordGlyphs: { basePath: string, diacriticPath: string, transform: any, baseTransform: any, advance: number, char: string, eraserPaths?: { path: string, size: number }[], isScaledToLowercase?: boolean }[] = [];
+      const wordGlyphs: { basePath: string, diacriticPath: string, transform: any, baseTransform: any, advance: number, char: string, eraserPaths?: { path: string, size: number }[], isScaledToLowercase?: boolean, hasOverlap?: boolean }[] = [];
 
       for (let i = 0; i < word.length; i++) {
         const char = word[i];
@@ -75,6 +75,7 @@ export const TextTester = React.memo(({ font, chars, stylisticAdaptation, sizeFi
         let baseTransform = { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0, flipX: false, flipY: false };
         
         let isScaledToLowercase = false;
+        let hasOverlap = false;
 
         if (info && (info.status === 'edited' || info.status === 'generated' || info.status === 'ok')) {
           advance = (info.advanceWidth !== undefined ? info.advanceWidth : (info.glyph?.advanceWidth || info.baseGlyph?.advanceWidth || 0)) * scale;
@@ -84,6 +85,7 @@ export const TextTester = React.memo(({ font, chars, stylisticAdaptation, sizeFi
           if (info.diacriticTransform) transform = { ...transform, ...info.diacriticTransform };
           if (info.baseTransform) baseTransform = { ...baseTransform, ...info.baseTransform };
           isScaledToLowercase = !!info.isScaledToLowercase;
+          hasOverlap = !!info.anomalies?.includes('Diakritika sa prekrýva so základným znakom');
         } else {
           const glyph = font.charToGlyph(char);
           advance = glyph.advanceWidth * scale;
@@ -97,7 +99,7 @@ export const TextTester = React.memo(({ font, chars, stylisticAdaptation, sizeFi
           advance *= lowerScale;
         }
 
-        wordGlyphs.push({ basePath, diacriticPath, transform, baseTransform, advance, char, eraserPaths: info?.eraserPaths, isScaledToLowercase });
+        wordGlyphs.push({ basePath, diacriticPath, transform, baseTransform, advance, char, eraserPaths: info?.eraserPaths, isScaledToLowercase, hasOverlap });
         wordWidth += advance;
       }
 
@@ -119,6 +121,15 @@ export const TextTester = React.memo(({ font, chars, stylisticAdaptation, sizeFi
 
         elements.push(
           <g key={`${w}-${idx}`} transform={`translate(${currentX}, ${currentY}) scale(${finalScale})`}>
+            {g.hasOverlap && (
+              <rect 
+                x={0} 
+                y={-font.ascender} 
+                width={g.advance / finalScale} 
+                height={font.ascender - font.descender} 
+                fill="rgba(244, 63, 94, 0.2)" 
+              />
+            )}
             {g.basePath && (
               <g transform={`translate(${g.baseTransform.x}, ${-g.baseTransform.y}) rotate(${g.baseTransform.rotation || 0}) skewX(${g.baseTransform.skewX || 0}) skewY(${g.baseTransform.skewY || 0}) scale(${g.baseTransform.scaleX * (g.baseTransform.flipX ? -1 : 1)}, ${g.baseTransform.scaleY * (g.baseTransform.flipY ? -1 : 1)})`}>
                 <path d={g.basePath} fill={isSelected ? "#6366f1" : "currentColor"} mask={maskId ? `url(#${maskId})` : undefined} />

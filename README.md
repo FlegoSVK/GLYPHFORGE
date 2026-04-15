@@ -1,11 +1,13 @@
-# Editor Diakritiky (Font Editor)
+# Editor Diakritiky (Game Font Editor)
 
 ## Krátky popis
-Webová aplikácia na pokročilú úpravu, opravu a dopĺňanie diakritiky do fontov (.ttf, .otf). Nástroj umožňuje automatické generovanie chýbajúcich znakov, detailné manuálne ladenie pozícií, čistenie vektorových ciest a export upraveného fontu priamo v prehliadači.
+Webová aplikácia určená primárne na úpravu, opravu a dopĺňanie diakritiky do herných fontov (napr. pre Unreal Engine `.ufont` komunitné preklady hier). Nástroj umožňuje automatické generovanie chýbajúcich znakov, detailné manuálne ladenie pozícií, čistenie vektorových ciest a export upraveného fontu priamo v prehliadači, čím výrazne zjednodušuje proces lokalizácie hier.
 
 ## Hlavné funkcie
 
-### 🚀 Automatizácia a hromadné úpravy
+### 🎮 Podpora pre herné preklady
+* **Optimalizované pre herné enginy:** Vygenerované `.ttf` fonty sú pripravené na konverziu do herných formátov (ako `.ufont` pre Unreal Engine).
+* **Rýchla lokalizácia:** Nástroj je navrhnutý tak, aby maximálne urýchlil proces pridávania slovenskej/českej diakritiky do originálnych herných fontov.
 * **Auto Úprava:** Komplexná funkcia, ktorá jedným kliknutím vykoná 4 kroky v správnom poradí: vyčistí problémové glyfy, doplní chýbajúce znaky, zloží znaky zo základov a opraví bočné medzery.
 * **Zložiť všetky znaky:** Vynúti zloženie znakov z ich základného písmena a diakritického znamienka pre jednoduchšiu manipuláciu a oddelenie ciest.
 * **Hromadné čistenie a generovanie:** Možnosť aplikovať opravy na všetky znaky vo fonte naraz.

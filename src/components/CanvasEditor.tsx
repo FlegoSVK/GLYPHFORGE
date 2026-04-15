@@ -29,6 +29,7 @@ export function CanvasEditor({
   const [isDragging, setIsDragging] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [dragDelta, setDragDelta] = useState<{ dx: number, dy: number } | null>(null);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [spacePressed, setSpacePressed] = useState(false);
   const [currentStroke, setCurrentStroke] = useState<string | null>(null);
@@ -133,6 +134,7 @@ export function CanvasEditor({
     } else if (target === editTarget) {
       setIsDragging(true);
       setDragStart({ x: pt.x, y: pt.y });
+      setDragDelta({ dx: 0, dy: 0 });
     }
   };
 
@@ -158,17 +160,8 @@ export function CanvasEditor({
       setViewBox(prev => ({ ...prev, x: prev.x - dx, y: prev.y - dy }));
     } else if (isDragging) {
       const dx = pt.x - dragStart.x;
-      const dy = pt.y - dragStart.y; // SVG y is down, font y is up, but we handle it in transform
-      
-      const current = editTarget === 'base'
-        ? (charInfo.baseTransform || { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 })
-        : (charInfo.diacriticTransform || { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 });
-        
-      onTransformChange({
-        x: current.x + dx,
-        y: current.y - dy // Invert dy because font coordinates go up
-      }, editTarget);
-      setDragStart({ x: pt.x, y: pt.y });
+      const dy = pt.y - dragStart.y;
+      setDragDelta({ dx, dy });
     }
   };
 
@@ -183,7 +176,18 @@ export function CanvasEditor({
       onEraserChange(newPaths);
       setCurrentStroke(null);
     }
+    if (isDragging && dragDelta) {
+      const current = editTarget === 'base'
+        ? (charInfo.baseTransform || { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 })
+        : (charInfo.diacriticTransform || { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 });
+        
+      onTransformChange({
+        x: current.x + dragDelta.dx,
+        y: current.y - dragDelta.dy
+      }, editTarget);
+    }
     setIsDragging(false);
+    setDragDelta(null);
     setIsPanning(false);
     setIsErasing(false);
   };
@@ -203,6 +207,19 @@ export function CanvasEditor({
     : (charInfo.diacriticGlyph ? getPathD(charInfo.diacriticGlyph) : '');
   const transform = charInfo.diacriticTransform || { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 };
   const baseTransform = charInfo.baseTransform || { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 };
+
+  const currentTransform = { ...transform };
+  const currentBaseTransform = { ...baseTransform };
+
+  if (isDragging && dragDelta) {
+    if (editTarget === 'diacritic') {
+      currentTransform.x += dragDelta.dx;
+      currentTransform.y -= dragDelta.dy;
+    } else if (editTarget === 'base') {
+      currentBaseTransform.x += dragDelta.dx;
+      currentBaseTransform.y -= dragDelta.dy;
+    }
+  }
 
   return (
     <div 
@@ -381,7 +398,7 @@ export function CanvasEditor({
           <g 
             mask="url(#eraser-mask-base)" 
             style={{ opacity: charInfo.layerOpacity?.base ?? 1 }}
-            transform={`translate(${baseTransform.x}, ${-baseTransform.y}) rotate(${baseTransform.rotation || 0}) skewX(${baseTransform.skewX || 0}) skewY(${baseTransform.skewY || 0}) scale(${baseTransform.scaleX * (baseTransform.flipX ? -1 : 1)}, ${baseTransform.scaleY * (baseTransform.flipY ? -1 : 1)})`}
+            transform={`translate(${currentBaseTransform.x}, ${-currentBaseTransform.y}) rotate(${currentBaseTransform.rotation || 0}) skewX(${currentBaseTransform.skewX || 0}) skewY(${currentBaseTransform.skewY || 0}) scale(${currentBaseTransform.scaleX * (currentBaseTransform.flipX ? -1 : 1)}, ${currentBaseTransform.scaleY * (currentBaseTransform.flipY ? -1 : 1)})`}
             onMouseDown={(e) => { e.stopPropagation(); handlePointerDown(e, 'base'); }}
             onTouchStart={(e) => { e.stopPropagation(); handlePointerDown(e, 'base'); }}
             className={spacePressed ? 'pointer-events-none' : (editTarget === 'base' ? 'cursor-move' : 'cursor-default')}
@@ -405,7 +422,7 @@ export function CanvasEditor({
         {/* Diacritic Glyph */}
         {diacriticPath && (charInfo.layerVisibility?.diacritic ?? true) && (
           <g 
-            transform={`translate(${transform.x + globalShiftX}, ${-transform.y}) rotate(${transform.rotation || 0}) skewX(${transform.skewX || 0}) skewY(${transform.skewY || 0}) scale(${transform.scaleX * (transform.flipX ? -1 : 1)}, ${transform.scaleY * (transform.flipY ? -1 : 1)})`}
+            transform={`translate(${currentTransform.x + globalShiftX}, ${-currentTransform.y}) rotate(${currentTransform.rotation || 0}) skewX(${currentTransform.skewX || 0}) skewY(${currentTransform.skewY || 0}) scale(${currentTransform.scaleX * (currentTransform.flipX ? -1 : 1)}, ${currentTransform.scaleY * (currentTransform.flipY ? -1 : 1)})`}
             onMouseDown={(e) => { e.stopPropagation(); handlePointerDown(e, 'diacritic'); }}
             onTouchStart={(e) => { e.stopPropagation(); handlePointerDown(e, 'diacritic'); }}
             className={spacePressed ? 'pointer-events-none' : (editTarget === 'diacritic' ? 'cursor-move' : 'cursor-default')}

@@ -715,6 +715,11 @@ export default function App() {
                     {info?.isScaledToLowercase && (
                       <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400" title="Zmenšené na malé písmeno" />
                     )}
+                    {info?.anomalies?.includes('Diakritika sa prekrýva so základným znakom') && (
+                      <div className="absolute bottom-1 right-1 text-rose-500" title="Výstraha: Diakritika sa prekrýva so základným znakom">
+                        <AlertTriangle size={10} />
+                      </div>
+                    )}
                   </button>
                 );
               })}
