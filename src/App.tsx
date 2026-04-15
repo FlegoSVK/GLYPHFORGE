@@ -167,6 +167,13 @@ export default function App() {
   const [sizeFilter, setSizeFilter] = useState<'all' | 'heading' | 'body' | 'micro'>('all');
   const [wrapText, setWrapText] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(true);
+
+  useEffect(() => {
+    if (selectedChar) {
+      setShowHeatmap(true);
+    }
+  }, [selectedChar]);
+
   const [activeTool, setActiveTool] = useState<'select' | 'eraser'>('select');
   const [eraserSize, setEraserSize] = useState(20);
   const [globalShiftX, setGlobalShiftX] = useState(0);
@@ -422,7 +429,7 @@ export default function App() {
                             <Type size={18} />
                           </div>
                           <div className="min-w-0 flex-1 pr-4">
-                            <h4 className="font-medium text-zinc-200 group-hover:text-white transition-colors truncate">{project.name}</h4>
+                            <h4 className="font-medium text-zinc-200 group-hover:text-white transition-colors truncate" title={project.name}>{project.name}</h4>
                             <p className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1">
                               <Clock size={10} />
                               {new Date(project.lastModified).toLocaleString('sk-SK')}

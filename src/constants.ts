@@ -22,7 +22,7 @@ export const CHAR_RECIPES: Record<string, CharRecipe> = {
   'Ě': { base: 'E', diacriticType: 'caron', defaultSource: ['Č', 'Š', 'Ž', 'Ř', 'Ň'] },
   'Í': { base: 'I', diacriticType: 'acute', defaultSource: ['Á', 'É', 'Ó', 'Ú', 'Ý', 'Ĺ', 'Ŕ'] },
   'Ĺ': { base: 'L', diacriticType: 'acute', defaultSource: ['Á', 'É', 'Í', 'Ó', 'Ú', 'Ý', 'Ŕ'] },
-  'Ľ': { base: 'L', diacriticType: 'caron', defaultSource: ['Ť', 'Ď', 'Ň', 'Č', 'Š', 'Ž'] },
+  'Ľ': { base: 'L', diacriticType: 'apostrophe', defaultSource: ['Ť', 'Ď', 'Ň', 'Č', 'Š', 'Ž'] },
   'Ň': { base: 'N', diacriticType: 'caron', defaultSource: ['Č', 'Š', 'Ž', 'Ď', 'Ť'] },
   'Ó': { base: 'O', diacriticType: 'acute', defaultSource: ['Á', 'É', 'Í', 'Ú', 'Ý', 'Ĺ', 'Ŕ'] },
   'Ô': { base: 'O', diacriticType: 'circumflex', defaultSource: ['Â', 'Ê', 'Î', 'Û'] },

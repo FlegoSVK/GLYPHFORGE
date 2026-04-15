@@ -138,6 +138,8 @@ export function CanvasEditor({
     }
   };
 
+  const requestRef = useRef<number | null>(null);
+
   const handlePointerMove = (e: React.MouseEvent | React.TouchEvent) => {
     const pt = getSVGPoint(e);
 
@@ -159,9 +161,12 @@ export function CanvasEditor({
       const dy = pt.y - panStart.y;
       setViewBox(prev => ({ ...prev, x: prev.x - dx, y: prev.y - dy }));
     } else if (isDragging) {
-      const dx = pt.x - dragStart.x;
-      const dy = pt.y - dragStart.y;
-      setDragDelta({ dx, dy });
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+      requestRef.current = requestAnimationFrame(() => {
+        const dx = pt.x - dragStart.x;
+        const dy = pt.y - dragStart.y;
+        setDragDelta({ dx, dy });
+      });
     }
   };
 
@@ -171,11 +176,14 @@ export function CanvasEditor({
   };
 
   const handlePointerUp = () => {
+    if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    
     if (isErasing && currentStroke && onEraserChange) {
       const newPaths = [...(charInfo.eraserPaths || []), { path: currentStroke, size: eraserSize }];
       onEraserChange(newPaths);
       setCurrentStroke(null);
     }
+    
     if (isDragging && dragDelta) {
       const current = editTarget === 'base'
         ? (charInfo.baseTransform || { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 })
@@ -186,6 +194,7 @@ export function CanvasEditor({
         y: current.y - dragDelta.dy
       }, editTarget);
     }
+    
     setIsDragging(false);
     setDragDelta(null);
     setIsPanning(false);
@@ -426,7 +435,7 @@ export function CanvasEditor({
             onMouseDown={(e) => { e.stopPropagation(); handlePointerDown(e, 'diacritic'); }}
             onTouchStart={(e) => { e.stopPropagation(); handlePointerDown(e, 'diacritic'); }}
             className={spacePressed ? 'pointer-events-none' : (editTarget === 'diacritic' ? 'cursor-move' : 'cursor-default')}
-            filter={stylisticAdaptation ? "url(#stylistic-adaptation-filter)" : undefined}
+            filter={(stylisticAdaptation && !isDragging) ? "url(#stylistic-adaptation-filter)" : undefined}
             style={{ opacity: charInfo.layerOpacity?.diacritic ?? 1 }}
           >
             <path 

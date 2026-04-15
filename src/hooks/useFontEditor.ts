@@ -661,12 +661,30 @@ function calculateAutoTransform(
   baseGlyph: opentype.Glyph, 
   diacriticType: DiacriticType, 
   diacriticGlyph?: opentype.Glyph,
-  isSvg: boolean = false
+  isSvg: boolean = false,
+  font?: opentype.Font
 ) {
   const baseBox = baseGlyph.getBoundingBox();
-  const capHeight = baseBox.y2 - baseBox.y1;
   const baseWidth = baseBox.x2 - baseBox.x1;
-  const gap = capHeight * 0.05;
+  
+  // Try to get standard metrics from font if available
+  let capHeight = 700;
+  let xHeight = 500;
+  if (font?.tables?.os2) {
+    if (font.tables.os2.sCapHeight) capHeight = font.tables.os2.sCapHeight;
+    if (font.tables.os2.sxHeight) xHeight = font.tables.os2.sxHeight;
+  }
+
+  // Heuristic to determine if we should align to cap height or x-height
+  // Letters with ascenders or uppercase letters should use capHeight reference
+  const isTall = baseBox.y2 > xHeight * 1.1;
+  
+  // Use standard metrics (capHeight/xHeight) as the primary reference.
+  // This ignores overshoot (e.g. in C, O, S) and ensures diacritics align horizontally 
+  // across different characters, making them "sit" better on the letters.
+  const referenceTop = isTall ? capHeight : xHeight;
+  
+  const gap = capHeight * 0.015; 
 
   let scaleX = 1;
   let scaleY = 1;
@@ -679,23 +697,29 @@ function calculateAutoTransform(
     
     if (diacriticType === 'apostrophe') {
       x = baseBox.x2 + gap;
-      y = baseBox.y2 * 0.8 + 100 * scaleX;
+      y = referenceTop * 0.88 + 100 * scaleX;
     } else {
       x = baseBox.x1 + (baseWidth - 100 * scaleX) / 2;
-      y = baseBox.y2 + gap + 100 * scaleY;
+      // For caron in SVG, we also want it closer
+      const currentGap = diacriticType === 'caron' ? 0 : gap;
+      y = referenceTop + currentGap + 100 * scaleY;
     }
   } else if (diacriticGlyph) {
     const diaBox = diacriticGlyph.getBoundingBox();
-    const diaWidth = diaBox.x2 - diaBox.x1;
     const diaXCenter = (diaBox.x1 + diaBox.x2) / 2;
     const baseXCenter = (baseBox.x1 + baseBox.x2) / 2;
 
     if (diacriticType === 'apostrophe') {
-      x = baseBox.x2 + gap - diaBox.x1;
-      y = baseBox.y2 * 0.8 - diaBox.y1;
+      x = baseBox.x2 + gap * 0.3 - diaBox.x1;
+      // Position apostrophe-caron relative to the top of the letter
+      y = referenceTop * 0.92 - diaBox.y1;
     } else {
       x = baseXCenter - diaXCenter;
-      y = baseBox.y2 + gap - diaBox.y1;
+      // For caron (ˇ), we use zero gap relative to the standard height (capHeight/xHeight).
+      // This allows the caron to "hug" letters with overshoot (like C, S, Ž) 
+      // and stay consistently aligned with flat letters (like Z, T, N).
+      const currentGap = diacriticType === 'caron' ? -capHeight * 0.005 : gap;
+      y = referenceTop + currentGap - diaBox.y1;
     }
   }
 
@@ -923,7 +947,7 @@ export function useFontEditor() {
             
             if (diacriticGlyph) {
               try {
-                const autoTransform = calculateAutoTransform(baseGlyph, recipe.diacriticType, diacriticGlyph, false);
+                const autoTransform = calculateAutoTransform(baseGlyph, recipe.diacriticType, diacriticGlyph, false, loadedFont);
                 initialTransform = { ...autoTransform, flipY: initialTransform.flipY };
               } catch (e) {
                 console.warn("Could not calculate bounding box for auto-placement", e);
@@ -2128,7 +2152,7 @@ export function useFontEditor() {
     const targetInfo = chars[targetChar];
     if (!sourceInfo || !sourceInfo.diacriticGlyph || !targetInfo) return;
 
-    const autoTransform = targetInfo.baseGlyph ? calculateAutoTransform(targetInfo.baseGlyph, 'acute', sourceInfo.diacriticGlyph, false) : { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0, flipX: false, flipY: false };
+    const autoTransform = targetInfo.baseGlyph ? calculateAutoTransform(targetInfo.baseGlyph, 'acute', sourceInfo.diacriticGlyph, false, font || undefined) : { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0, flipX: false, flipY: false };
     
     if (sourceInfo.diacriticTransform?.flipY) autoTransform.flipY = true;
     if (sourceInfo.diacriticTransform?.flipX) autoTransform.flipX = true;
