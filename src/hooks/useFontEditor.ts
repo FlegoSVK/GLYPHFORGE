@@ -699,7 +699,7 @@ function calculateAutoTransform(
     }
   }
 
-  return { x, y, scaleX, scaleY, rotation: 0, skewX: 0, skewY: 0 };
+  return { x, y, scaleX, scaleY, rotation: 0, skewX: 0, skewY: 0, flipX: false, flipY: false };
 }
 
 export function useFontEditor() {
@@ -840,7 +840,7 @@ export function useFontEditor() {
         const recipe = CHAR_RECIPES[char];
         let baseGlyph: opentype.Glyph | undefined;
         let diacriticGlyph: opentype.Glyph | undefined;
-        let initialTransform = { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 };
+        let initialTransform = { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0, flipX: false, flipY: false };
         let advanceWidth: number | undefined;
 
         let diacriticSource: CharInfo['diacriticSource'] = 'original';
@@ -903,10 +903,28 @@ export function useFontEditor() {
                 }
               }
             }
+
+            // 4. Fallback to alternative diacritics (e.g. circumflex for caron with flipY)
+            if (!diacriticGlyph) {
+              if (recipe.diacriticType === 'caron') {
+                const circumflexSources = ['ô', 'Â', 'Ê', 'Î', 'Ô', 'Û', 'â', 'ê', 'î', 'û'];
+                for (const source of circumflexSources) {
+                  if (loadedFont.charToGlyphIndex(source) > 0) {
+                    diacriticGlyph = getCleanDiacriticGlyph(loadedFont, source);
+                    if (diacriticGlyph) {
+                      diacriticSource = 'stolen';
+                      initialTransform.flipY = true;
+                      break;
+                    }
+                  }
+                }
+              }
+            }
             
             if (diacriticGlyph) {
               try {
-                initialTransform = calculateAutoTransform(baseGlyph, recipe.diacriticType, diacriticGlyph, false);
+                const autoTransform = calculateAutoTransform(baseGlyph, recipe.diacriticType, diacriticGlyph, false);
+                initialTransform = { ...autoTransform, flipY: initialTransform.flipY };
               } catch (e) {
                 console.warn("Could not calculate bounding box for auto-placement", e);
               }
@@ -1756,6 +1774,8 @@ export function useFontEditor() {
         const diacriticType = getDiacriticType(char);
         if (diacriticType) {
           const autoTransform = calculateAutoTransform(info.baseGlyph, diacriticType, info.diacriticGlyph, false);
+          if (info.diacriticTransform?.flipY) autoTransform.flipY = true;
+          if (info.diacriticTransform?.flipX) autoTransform.flipX = true;
           updates[char] = {
             status: 'generated',
             diacriticTransform: autoTransform
@@ -1830,7 +1850,10 @@ export function useFontEditor() {
       if (currentStatus === 'missing' && info.baseGlyph && info.diacriticGlyph) {
         const diacriticType = getDiacriticType(char);
         if (diacriticType) {
-          currentTransform = calculateAutoTransform(info.baseGlyph, diacriticType, info.diacriticGlyph, false);
+          const autoTransform = calculateAutoTransform(info.baseGlyph, diacriticType, info.diacriticGlyph, false);
+          if (info.diacriticTransform?.flipY) autoTransform.flipY = true;
+          if (info.diacriticTransform?.flipX) autoTransform.flipX = true;
+          currentTransform = autoTransform;
           currentStatus = 'generated';
           charChanged = true;
         }
@@ -1893,17 +1916,41 @@ export function useFontEditor() {
       const info = newChars[char];
       
       if (sourceInfo.svgDiacritic) {
-        const style = sourceInfo.svgDiacritic.style as FontStyle;
-        const diacriticType = getDiacriticType(char);
-        if (diacriticType && info.baseGlyph) {
-          const svgPath = SVG_DIACRITICS[style][diacriticType];
+        const style = sourceInfo.svgDiacritic.style as FontStyle | 'custom';
+        if (info.baseGlyph) {
+          const svgPath = style === 'custom' ? sourceInfo.svgDiacritic.path : SVG_DIACRITICS[style as FontStyle][diacriticType];
           const autoTransform = calculateAutoTransform(info.baseGlyph, diacriticType, undefined, true);
           
+          if (sourceInfo.diacriticTransform?.flipY) autoTransform.flipY = true;
+          if (sourceInfo.diacriticTransform?.flipX) autoTransform.flipX = true;
+
           newChars[char] = {
             ...info,
             status: 'edited',
             diacriticSource: 'svg',
-            svgDiacritic: { path: svgPath, style },
+            svgDiacritic: { path: svgPath, style: style as string },
+            diacriticTransform: autoTransform
+          };
+          changed = true;
+        }
+      } else if (sourceInfo.diacriticGlyph) {
+        if (info.baseGlyph) {
+          const autoTransform = calculateAutoTransform(info.baseGlyph, diacriticType, sourceInfo.diacriticGlyph, false);
+          
+          // If the source has a flipped transform (e.g. caron from circumflex), carry over the flip
+          if (sourceInfo.diacriticTransform?.flipY) {
+            autoTransform.flipY = true;
+          }
+          if (sourceInfo.diacriticTransform?.flipX) {
+            autoTransform.flipX = true;
+          }
+
+          newChars[char] = {
+            ...info,
+            svgDiacritic: undefined,
+            status: 'edited',
+            diacriticSource: sourceInfo.diacriticSource || 'glyph',
+            diacriticGlyph: sourceInfo.diacriticGlyph,
             diacriticTransform: autoTransform
           };
           changed = true;
@@ -1918,29 +1965,13 @@ export function useFontEditor() {
            };
            changed = true;
          }
-      } else {
-        // Composite
-        if (info.baseGlyph && info.diacriticGlyph) {
-          const diacriticType = getDiacriticType(char);
-          if (diacriticType) {
-            const autoTransform = calculateAutoTransform(info.baseGlyph, diacriticType, info.diacriticGlyph, false);
-            newChars[char] = {
-              ...info,
-              svgDiacritic: undefined,
-              status: 'edited',
-              diacriticSource: sourceInfo.diacriticSource,
-              diacriticTransform: autoTransform
-            };
-            changed = true;
-          }
-        }
       }
     }
 
     if (changed) {
       saveHistory(newChars);
     }
-  }, [chars, font, saveHistory, fontName]);
+  }, [chars, font, saveHistory]);
 
   const applyTransformToAll = useCallback((sourceChar: string) => {
     const sourceInfo = chars[sourceChar];
@@ -2097,7 +2128,10 @@ export function useFontEditor() {
     const targetInfo = chars[targetChar];
     if (!sourceInfo || !sourceInfo.diacriticGlyph || !targetInfo) return;
 
-    const autoTransform = targetInfo.baseGlyph ? calculateAutoTransform(targetInfo.baseGlyph, 'acute', sourceInfo.diacriticGlyph, false) : { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 };
+    const autoTransform = targetInfo.baseGlyph ? calculateAutoTransform(targetInfo.baseGlyph, 'acute', sourceInfo.diacriticGlyph, false) : { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0, flipX: false, flipY: false };
+    
+    if (sourceInfo.diacriticTransform?.flipY) autoTransform.flipY = true;
+    if (sourceInfo.diacriticTransform?.flipX) autoTransform.flipX = true;
 
     const newChars = { ...chars };
     newChars[targetChar] = {
