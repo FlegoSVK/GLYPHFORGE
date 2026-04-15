@@ -758,6 +758,7 @@ export function useFontEditor() {
 
   const [isBatchApplying, setIsBatchApplying] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportingChar, setExportingChar] = useState<string | null>(null);
   const [exportProgress, setExportProgress] = useState(0);
   const [libraryDiacritics, setLibraryDiacritics] = useState<LibraryDiacritic[]>([]);
 
@@ -1625,6 +1626,7 @@ export function useFontEditor() {
       };
 
       for (const [char, info] of entries) {
+        setExportingChar(char);
         if (info.status === 'generated' || info.status === 'edited') {
           const charCode = char.charCodeAt(0);
           const hexCode = charCode.toString(16).toUpperCase().padStart(4, '0');
@@ -1683,8 +1685,9 @@ export function useFontEditor() {
         processed++;
         // Yield on every single character to ensure UI stays responsive
         setExportProgress(Math.round((processed / entries.length) * 50)); 
-        await new Promise(resolve => setTimeout(resolve, 5));
+        await new Promise(resolve => setTimeout(resolve, 1));
       }
+      setExportingChar(null);
 
       if (font.tables.maxp) {
         font.tables.maxp.numGlyphs = glyphSet.length;
@@ -2303,6 +2306,7 @@ export function useFontEditor() {
     hasUnsavedChanges,
     isBatchApplying,
     isExporting,
+    exportingChar,
     exportProgress,
     applySvgStyle,
     applySourceToAll,

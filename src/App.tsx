@@ -149,7 +149,7 @@ export default function App() {
     updateCharTransform, updateAdvanceWidth, updateEraserPaths, scaleToLowercase, updateCharProperty, batchUpdateChars, batchScaleToLowercase,
     exportJSON, importJSON, exportFont,
     undo, redo, canUndo, canRedo, hasUnsavedChanges,
-    isBatchApplying, isExporting, exportProgress, applySvgStyle,
+    isBatchApplying, isExporting, exportingChar, exportProgress, applySvgStyle,
     applySourceToAll, applyTransformToAll,
     runBatchApply, autoFixAll,
     cleanGlyphPaths,
@@ -472,7 +472,7 @@ export default function App() {
             <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-6"></div>
             <h2 className="text-xl font-semibold text-zinc-100 mb-2">Exportujem font</h2>
             <p className="text-zinc-400 text-sm mb-6">
-              Zlučujem znaky a generujem nový súbor. Toto môže chvíľu trvať...
+              {exportingChar ? `Spracovávam znak: ${exportingChar}` : 'Zlučujem znaky a generujem nový súbor. Toto môže chvíľu trvať...'}
             </p>
             <div className="w-full bg-zinc-800 rounded-full h-2 mb-2 overflow-hidden">
               <div 
@@ -718,10 +718,16 @@ export default function App() {
                     className={cn(
                       "aspect-square flex items-center justify-center text-lg rounded border transition-all relative",
                       statusColor,
-                      selectedChar === char ? "ring-2 ring-indigo-500 ring-offset-2 ring-offset-zinc-950 border-transparent" : "hover:brightness-125"
+                      selectedChar === char ? "ring-2 ring-indigo-500 ring-offset-2 ring-offset-zinc-950 border-transparent" : "hover:brightness-125",
+                      exportingChar === char ? "ring-2 ring-white animate-pulse" : ""
                     )}
                   >
                     {char}
+                    {exportingChar === char && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded">
+                        <div className="w-2 h-2 bg-white rounded-full animate-ping" />
+                      </div>
+                    )}
                     {info?.isScaledToLowercase && (
                       <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400" title="Zmenšené na malé písmeno" />
                     )}
