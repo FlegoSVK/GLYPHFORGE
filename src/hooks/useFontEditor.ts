@@ -1810,17 +1810,53 @@ export function useFontEditor() {
     let changed = false;
 
     Object.entries(chars).forEach(([char, info]) => {
-      if (info.status === 'missing' && info.baseGlyph && info.diacriticGlyph) {
-        const diacriticType = getDiacriticType(char);
-        if (diacriticType) {
-          const autoTransform = calculateAutoTransform(info.baseGlyph, diacriticType, info.diacriticGlyph, false);
-          if (info.diacriticTransform?.flipY) autoTransform.flipY = true;
-          if (info.diacriticTransform?.flipX) autoTransform.flipX = true;
-          updates[char] = {
-            status: 'generated',
-            diacriticTransform: autoTransform
-          };
-          changed = true;
+      if (info.status === 'missing' && info.baseGlyph) {
+        let diacriticGlyph = info.diacriticGlyph;
+        
+        // If no diacritic glyph, try to find it in the font
+        if (!diacriticGlyph && font) {
+          const diacriticType = getDiacriticType(char);
+          if (diacriticType) {
+            // Map diacritic type to common glyph names
+            const nameMap: Record<string, string> = {
+              acute: 'acute',
+              caron: 'caron',
+              ring: 'ring',
+              diaeresis: 'dieresis',
+              circumflex: 'circumflex',
+              apostrophe: 'caron' // fallback
+            };
+            const name = nameMap[diacriticType];
+            if (name) {
+              try {
+                diacriticGlyph = font.nameToGlyph(name);
+              } catch (e) {
+                // Ignore
+              }
+            }
+            
+            // Fallback: try to find diacritic from corresponding lowercase char
+            if (!diacriticGlyph) {
+              const lowerChar = char.toLowerCase();
+              if (chars[lowerChar] && chars[lowerChar].diacriticGlyph) {
+                diacriticGlyph = chars[lowerChar].diacriticGlyph;
+              }
+            }
+          }
+        }
+
+        if (diacriticGlyph) {
+          const diacriticType = getDiacriticType(char);
+          if (diacriticType) {
+            const autoTransform = calculateAutoTransform(info.baseGlyph, diacriticType, diacriticGlyph, false, font);
+            
+            updates[char] = {
+              status: 'generated',
+              diacriticGlyph: diacriticGlyph,
+              diacriticTransform: autoTransform
+            };
+            changed = true;
+          }
         }
       }
     });
@@ -1828,7 +1864,7 @@ export function useFontEditor() {
     if (changed) {
       batchUpdateChars(updates);
     }
-  }, [chars, batchUpdateChars]);
+  }, [chars, batchUpdateChars, font]);
 
   const autoFixAll = useCallback(() => {
     const updates: Record<string, Partial<CharInfo>> = {};
