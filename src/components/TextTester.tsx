@@ -84,7 +84,7 @@ export const TextTester = React.memo(({ font, chars, previewText = DEFAULT_TEST_
           advance = (info.advanceWidth !== undefined ? info.advanceWidth : (info.glyph?.advanceWidth || info.baseGlyph?.advanceWidth || 0)) * scale;
           const getPathD = (glyph: opentype.Glyph) => glyph.getPath(0, 0, font.unitsPerEm, undefined, font).toPathData(2);
           basePath = info.status === 'ok' && info.glyph ? getPathD(info.glyph) : (info.baseGlyph ? getPathD(info.baseGlyph) : '');
-          diacriticPath = info.svgDiacritic ? info.svgDiacritic.path : (info.diacriticGlyph ? getPathD(info.diacriticGlyph) : '');
+          diacriticPath = info.status === 'ok' ? '' : (info.svgDiacritic ? info.svgDiacritic.path : (info.diacriticGlyph ? getPathD(info.diacriticGlyph) : ''));
           if (info.diacriticTransform) transform = { ...transform, ...info.diacriticTransform };
           if (info.baseTransform) baseTransform = { ...baseTransform, ...info.baseTransform };
           

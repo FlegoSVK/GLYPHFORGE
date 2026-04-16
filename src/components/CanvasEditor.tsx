@@ -18,7 +18,7 @@ interface CanvasEditorProps {
   onDragEnd?: () => void;
 }
 
-export function CanvasEditor({ 
+export const CanvasEditor = React.memo(function CanvasEditor({ 
   font, charInfo, onTransformChange, onEraserChange, 
   activeTool = 'select', eraserSize = 20, 
   stylisticAdaptation = false,
@@ -33,7 +33,7 @@ export function CanvasEditor({
   const [isDragging, setIsDragging] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [dragDelta, setDragDelta] = useState<{ dx: number, dy: number } | null>(null);
+  const dragDeltaRef = useRef<{ dx: number, dy: number } | null>(null);
   const [pendingTransform, setPendingTransform] = useState<{ x: number, y: number } | null>(null);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [spacePressed, setSpacePressed] = useState(false);
@@ -147,7 +147,14 @@ export function CanvasEditor({
     } else if (target === editTarget) {
       setIsDragging(true);
       setDragStart({ x: pt.x, y: pt.y });
-      setDragDelta({ dx: 0, dy: 0 });
+      dragDeltaRef.current = { dx: 0, dy: 0 };
+    } else if (charInfo.status === 'ok' && target === 'base' && editTarget === 'diacritic') {
+      // User clicked the combined glyph but wants to edit the diacritic
+      setIsDragging(true);
+      setDragStart({ x: pt.x, y: pt.y });
+      dragDeltaRef.current = { dx: 0, dy: 0 };
+      // Trigger a transform change to split the glyph
+      onTransformChange(charInfo.diacriticTransform || { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 }, 'diacritic');
     }
   };
 
@@ -179,7 +186,7 @@ export function CanvasEditor({
       
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
       requestRef.current = requestAnimationFrame(() => {
-        setDragDelta({ dx, dy });
+        dragDeltaRef.current = { dx, dy };
         
         // Directly update DOM for maximum smoothness
         const activeRef = editTarget === 'base' ? baseGroupRef : diacriticGroupRef;
@@ -212,14 +219,14 @@ export function CanvasEditor({
       setCurrentStroke(null);
     }
     
-    if (isDragging && dragDelta) {
+    if (isDragging && dragDeltaRef.current) {
       const current = editTarget === 'base'
         ? (charInfo.baseTransform || { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 })
         : (charInfo.diacriticTransform || { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 });
         
       const newPos = {
-        x: current.x + dragDelta.dx,
-        y: current.y - dragDelta.dy
+        x: current.x + dragDeltaRef.current.dx,
+        y: current.y - dragDeltaRef.current.dy
       };
       
       setPendingTransform(newPos);
@@ -227,7 +234,7 @@ export function CanvasEditor({
     }
     
     setIsDragging(false);
-    setDragDelta(null);
+    dragDeltaRef.current = null;
     setIsPanning(false);
     setIsErasing(false);
     if (onDragEnd) onDragEnd();
@@ -243,9 +250,11 @@ export function CanvasEditor({
     ? getPathD(charInfo.glyph) 
     : (charInfo.baseGlyph ? getPathD(charInfo.baseGlyph) : '');
     
-  const diacriticPath = charInfo.svgDiacritic 
-    ? charInfo.svgDiacritic.path 
-    : (charInfo.diacriticGlyph ? getPathD(charInfo.diacriticGlyph) : '');
+  const diacriticPath = charInfo.status === 'ok' 
+    ? '' 
+    : (charInfo.svgDiacritic 
+      ? charInfo.svgDiacritic.path 
+      : (charInfo.diacriticGlyph ? getPathD(charInfo.diacriticGlyph) : ''));
   const transform = charInfo.diacriticTransform || { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 };
   const baseTransform = charInfo.baseTransform || { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 };
 
@@ -263,13 +272,13 @@ export function CanvasEditor({
     }
   }
 
-  if (isDragging && dragDelta) {
+  if (isDragging && dragDeltaRef.current) {
     if (editTarget === 'diacritic') {
-      currentTransform.x += dragDelta.dx;
-      currentTransform.y -= dragDelta.dy;
+      currentTransform.x += dragDeltaRef.current.dx;
+      currentTransform.y -= dragDeltaRef.current.dy;
     } else if (editTarget === 'base') {
-      currentBaseTransform.x += dragDelta.dx;
-      currentBaseTransform.y -= dragDelta.dy;
+      currentBaseTransform.x += dragDeltaRef.current.dx;
+      currentBaseTransform.y -= dragDeltaRef.current.dy;
     }
   }
 
@@ -538,4 +547,4 @@ export function CanvasEditor({
       </svg>
     </div>
   );
-}
+});

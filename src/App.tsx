@@ -165,6 +165,30 @@ export default function App() {
   const [activeDragTransform, setActiveDragTransform] = useState<{ x: number, y: number } | null>(null);
   const [activeDragTarget, setActiveDragTarget] = useState<'diacritic' | 'base' | null>(null);
   const [activeDragChar, setActiveDragChar] = useState<string | null>(null);
+
+  const handleDrag = useCallback((t: { x: number, y: number }, target: 'diacritic' | 'base') => {
+    setActiveDragTransform(t);
+    setActiveDragTarget(target);
+    setActiveDragChar(selectedChar);
+  }, [selectedChar]);
+
+  const handleDragEnd = useCallback(() => {
+    setActiveDragTransform(null);
+    setActiveDragTarget(null);
+    setActiveDragChar(null);
+  }, []);
+
+  const handleTransformChange = useCallback((t: any, target: 'diacritic' | 'base') => {
+    if (selectedChar) {
+      updateCharTransform(selectedChar, t, target);
+    }
+  }, [selectedChar, updateCharTransform]);
+
+  const handleEraserChange = useCallback((paths: any) => {
+    if (selectedChar) {
+      updateEraserPaths(selectedChar, paths);
+    }
+  }, [selectedChar, updateEraserPaths]);
   const [charFilter, setCharFilter] = useState<'all' | 'modified' | 'original'>('all');
   const [previewText, setPreviewText] = useState(() => {
     return localStorage.getItem('fontEditorPreviewText') || "Vypoj kŕdeľ šťastných dravcov zmäteným hučaním.";
@@ -827,23 +851,15 @@ export default function App() {
                 <CanvasEditor 
                   font={font} 
                   charInfo={selectedInfo} 
-                  onTransformChange={(t, target) => updateCharTransform(selectedChar, t, target || editTarget)} 
-                  onEraserChange={(paths) => updateEraserPaths(selectedChar, paths)}
+                  onTransformChange={handleTransformChange} 
+                  onEraserChange={handleEraserChange}
                   activeTool={activeTool}
                   eraserSize={eraserSize}
                   stylisticAdaptation={stylisticAdaptation}
                   showHeatmap={showHeatmap}
                   editTarget={editTarget}
-                  onDrag={(t, target) => {
-                    setActiveDragTransform(t);
-                    setActiveDragTarget(target);
-                    setActiveDragChar(selectedChar);
-                  }}
-                  onDragEnd={() => {
-                    setActiveDragTransform(null);
-                    setActiveDragTarget(null);
-                    setActiveDragChar(null);
-                  }}
+                  onDrag={handleDrag}
+                  onDragEnd={handleDragEnd}
                 />
               ) : (
                 <div className="text-zinc-600 flex flex-col items-center">
