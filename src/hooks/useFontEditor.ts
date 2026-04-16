@@ -666,6 +666,8 @@ function calculateAutoTransform(
 ) {
   const baseBox = baseGlyph.getBoundingBox();
   const baseWidth = baseBox.x2 - baseBox.x1;
+  const baseXCenter = (baseBox.x1 + baseBox.x2) / 2;
+  const baseYTop = baseBox.y2; // Skutočný najvyšší bod základného znaku
   
   // Try to get standard metrics from font if available
   let capHeight = 700;
@@ -689,15 +691,8 @@ function calculateAutoTransform(
     if (xHeight === 500 && font.tables?.os2?.sxHeight) xHeight = font.tables.os2.sxHeight;
   }
 
-  // Heuristic to determine if we should align to cap height or x-height
-  // Letters with ascenders or uppercase letters should use capHeight reference
-  const isTall = baseBox.y2 > xHeight * 1.1;
-  
-  // Use standard metrics (capHeight/xHeight) as the primary reference.
-  const referenceTop = isTall ? capHeight : xHeight;
-  
-  // Make gap proportional to the reference height for consistency between upper/lower case
-  const gap = referenceTop * 0.012; 
+  // Medzera medzi znakom a diakritikou (napr. 6% z výšky veľkého písmena)
+  const gap = capHeight * 0.06; 
 
   let scaleX = 1;
   let scaleY = 1;
@@ -705,41 +700,45 @@ function calculateAutoTransform(
   let y = 0;
 
   if (isSvg) {
-    const targetHeight = referenceTop * 0.25;
+    const targetHeight = capHeight * 0.25;
     scaleX = scaleY = targetHeight / 100;
     
     if (diacriticType === 'apostrophe') {
-      x = baseBox.x2 + gap;
-      y = referenceTop * 0.88 + 100 * scaleX;
+      x = baseBox.x2 + gap * 0.5;
+      y = baseYTop * 0.95 + 100 * scaleX;
     } else {
       x = baseBox.x1 + (baseWidth - 100 * scaleX) / 2;
-      const currentGap = diacriticType === 'caron' ? -referenceTop * 0.005 : gap;
-      y = referenceTop + currentGap + 100 * scaleY;
+      const currentGap = diacriticType === 'caron' ? gap * 0.8 : gap;
+      y = baseYTop + currentGap + 100 * scaleY;
     }
   } else if (diacriticGlyph) {
     const diaBox = diacriticGlyph.getBoundingBox();
     const diaXCenter = (diaBox.x1 + diaBox.x2) / 2;
-    const baseXCenter = (baseBox.x1 + baseBox.x2) / 2;
 
     if (diacriticType === 'apostrophe') {
+      // Apostrof (ď, ť, ľ) sa umiestňuje vpravo hore od základného znaku
       x = baseBox.x2 + gap * 0.3 - diaBox.x1;
-      y = referenceTop * 0.92 - diaBox.y1;
+      y = baseYTop * 0.95 - diaBox.y1;
     } else {
+      // Centrované diakritiky
       x = baseXCenter - diaXCenter;
-      // Proportional caron gap
-      const currentGap = diacriticType === 'caron' ? -referenceTop * 0.005 : gap;
+      
+      // Mierne menšia medzera pre mäkčeň, aby nevyzeral "odtrhnutý"
+      const currentGap = diacriticType === 'caron' ? gap * 0.6 : gap;
       
       const isFlipped = diacriticType === 'caron' && !font?.charToGlyphIndex('caron') && font?.charToGlyphIndex('circumflex');
       
       if (isFlipped) {
-        y = referenceTop + currentGap + diaBox.y2;
+        // Ak otáčame vokáň na mäkčeň, musíme pripočítať horný okraj diakritiky
+        y = baseYTop + currentGap + diaBox.y2;
       } else {
-        y = referenceTop + currentGap - diaBox.y1;
+        // Štandardné umiestnenie: vrch znaku + medzera - spodok diakritiky
+        y = baseYTop + currentGap - diaBox.y1;
       }
     }
   }
 
-  return { x, y, scaleX, scaleY, rotation: 0, skewX: 0, skewY: 0, flipX: false, flipY: false, referenceTop, baseWidth };
+  return { x, y, scaleX, scaleY, rotation: 0, skewX: 0, skewY: 0, flipX: false, flipY: false, referenceTop: baseYTop, baseWidth };
 }
 
 export function useFontEditor() {
@@ -935,7 +934,12 @@ export function useFontEditor() {
 
             // 3. Fallback to stealing from other characters
             if (!diacriticGlyph) {
-              for (const source of recipe.defaultSource) {
+              let sourcesToTry = [...recipe.defaultSource];
+              // If uppercase, also try lowercase sources
+              if (char === char.toUpperCase()) {
+                sourcesToTry = [...sourcesToTry, ...recipe.defaultSource.map(s => s.toLowerCase())];
+              }
+              for (const source of sourcesToTry) {
                 const sourceIndex = loadedFont.charToGlyphIndex(source);
                 if (sourceIndex > 0) {
                   diacriticGlyph = getCleanDiacriticGlyph(loadedFont, source);
@@ -1882,7 +1886,40 @@ export function useFontEditor() {
       let currentGlyph = info.glyph;
       let charChanged = false;
 
-      // 1. Vyčistiť všetky (Clean glyphs)
+      // 1. Doplniť chýbajúce (Generate missing)
+      if (currentStatus === 'missing' && info.baseGlyph) {
+        const diacriticType = getDiacriticType(char);
+        if (diacriticType) {
+          if (info.diacriticGlyph) {
+            const autoTransform = calculateAutoTransform(info.baseGlyph, diacriticType, info.diacriticGlyph, false);
+            if (info.diacriticTransform?.flipY) autoTransform.flipY = true;
+            if (info.diacriticTransform?.flipX) autoTransform.flipX = true;
+            currentTransform = autoTransform;
+            currentStatus = 'generated';
+            charChanged = true;
+          } else {
+            // Fallback to SVG diacritic if no glyph is available in font
+            const style: FontStyle = 'sans-serif'; // Default style
+            const svgPath = SVG_DIACRITICS[style][diacriticType];
+            const autoTransform = calculateAutoTransform(info.baseGlyph, diacriticType, undefined, true, font || undefined);
+            currentTransform = autoTransform;
+            currentSvg = { path: svgPath, style };
+            currentStatus = 'edited';
+            charChanged = true;
+          }
+        }
+      }
+
+      // 2. Zložiť všetky znaky (Compose all)
+      if (info.baseGlyph && info.diacriticGlyph) {
+        if (currentStatus !== 'edited' || currentSvg !== undefined) {
+          currentStatus = 'edited';
+          currentSvg = undefined;
+          charChanged = true;
+        }
+      }
+
+      // 3. Vyčistiť všetky (Clean glyphs)
       if (info.anomalies && (info.anomalies.includes('Malé izolované časti') || info.anomalies.includes('Prekrývajúce sa alebo zložité cesty'))) {
         if (currentGlyph) {
           try {
@@ -1922,28 +1959,6 @@ export function useFontEditor() {
           } catch (e) {
             console.error('Error in cleanGlyphPaths during autoFixAll:', e);
           }
-        }
-      }
-
-      // 2. Doplniť chýbajúce (Generate missing)
-      if (currentStatus === 'missing' && info.baseGlyph && info.diacriticGlyph) {
-        const diacriticType = getDiacriticType(char);
-        if (diacriticType) {
-          const autoTransform = calculateAutoTransform(info.baseGlyph, diacriticType, info.diacriticGlyph, false);
-          if (info.diacriticTransform?.flipY) autoTransform.flipY = true;
-          if (info.diacriticTransform?.flipX) autoTransform.flipX = true;
-          currentTransform = autoTransform;
-          currentStatus = 'generated';
-          charChanged = true;
-        }
-      }
-
-      // 3. Zložiť všetky znaky (Compose all)
-      if (info.baseGlyph && info.diacriticGlyph) {
-        if (currentStatus !== 'edited' || currentSvg !== undefined) {
-          currentStatus = 'edited';
-          currentSvg = undefined;
-          charChanged = true;
         }
       }
 

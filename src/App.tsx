@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useDropzone, DropzoneOptions } from 'react-dropzone';
-import { Upload, Download, Settings, Type, RotateCcw, Undo2, Redo2, X, Clock, Trash2, Wand2, Shapes, FlipHorizontal, FlipVertical, MousePointer2, Eraser, Library, Minus, Plus, MoveHorizontal, Activity, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Upload, Download, Settings, Type, RotateCcw, Undo2, Redo2, X, Clock, Trash2, Wand2, Shapes, FlipHorizontal, FlipVertical, MousePointer2, Eraser, Library, Minus, Plus, MoveHorizontal, Activity, AlertTriangle, CheckCircle2, Edit2, Check } from 'lucide-react';
 import { useFontEditor, CharInfo, CharStatus } from './hooks/useFontEditor';
 import { cn } from './lib/utils';
 import { SINGLE_CHARS } from './constants';
@@ -166,6 +166,16 @@ export default function App() {
   const [activeDragTarget, setActiveDragTarget] = useState<'diacritic' | 'base' | null>(null);
   const [activeDragChar, setActiveDragChar] = useState<string | null>(null);
   const [charFilter, setCharFilter] = useState<'all' | 'modified' | 'original'>('all');
+  const [previewText, setPreviewText] = useState(() => {
+    return localStorage.getItem('fontEditorPreviewText') || "Vypoj kŕdeľ šťastných dravcov zmäteným hučaním.";
+  });
+  const [isEditingPreviewText, setIsEditingPreviewText] = useState(false);
+
+  const handlePreviewTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newText = e.target.value;
+    setPreviewText(newText);
+    localStorage.setItem('fontEditorPreviewText', newText);
+  };
   const [stylisticAdaptation, setStylisticAdaptation] = useState(false);
   const [sizeFilter, setSizeFilter] = useState<'all' | 'heading' | 'body' | 'micro'>('all');
   const [wrapText, setWrapText] = useState(false);
@@ -869,6 +879,34 @@ export default function App() {
                 </div>
               </div>
               <div className="flex items-center gap-4">
+                {isEditingPreviewText ? (
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="text" 
+                      value={previewText}
+                      onChange={handlePreviewTextChange}
+                      className="bg-zinc-800 text-white text-[10px] px-2 py-1 rounded border border-zinc-700 focus:outline-none focus:border-indigo-500 w-48"
+                      autoFocus
+                      onBlur={() => setIsEditingPreviewText(false)}
+                      onKeyDown={(e) => e.key === 'Enter' && setIsEditingPreviewText(false)}
+                    />
+                    <button 
+                      onClick={() => setIsEditingPreviewText(false)}
+                      className="text-zinc-400 hover:text-white"
+                    >
+                      <Check size={12} />
+                    </button>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => setIsEditingPreviewText(true)}
+                    className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                    title="Upraviť náhľadový text"
+                  >
+                    <Edit2 size={10} />
+                    Upraviť text
+                  </button>
+                )}
                 <label className="flex items-center gap-2 cursor-pointer" title="Zalomiť text v náhľade">
                   <input 
                     type="checkbox" 
@@ -896,6 +934,7 @@ export default function App() {
               <TextTester 
                 font={font} 
                 chars={chars} 
+                previewText={previewText}
                 stylisticAdaptation={stylisticAdaptation} 
                 sizeFilter={sizeFilter} 
                 wrapText={wrapText} 

@@ -5,6 +5,7 @@ import { CharInfo } from '../hooks/useFontEditor';
 interface TextTesterProps {
   font: opentype.Font;
   chars: Record<string, CharInfo>;
+  previewText?: string;
   stylisticAdaptation: boolean;
   sizeFilter: 'all' | 'heading' | 'body' | 'micro';
   wrapText: boolean;
@@ -15,9 +16,9 @@ interface TextTesterProps {
 }
 
 const DIACRITICS_TEXT = "Á Ä Č Ď É Ě Í Ĺ Ľ Ň Ó Ô Ŕ Ř Š Ť Ú Ů Ý Ž á ä č ď é ě í ĺ ľ ň ó ô ŕ ř š ť ú ů ý ž";
-const TEST_TEXT = "Vypoj kŕdeľ šťastných dravcov zmäteným hučaním.";
+const DEFAULT_TEST_TEXT = "Vypoj kŕdeľ šťastných dravcov zmäteným hučaním.";
 
-export const TextTester = React.memo(({ font, chars, stylisticAdaptation, sizeFilter, wrapText, globalShiftX = 0, selectedChar, activeDragTransform, activeDragTarget }: TextTesterProps) => {
+export const TextTester = React.memo(({ font, chars, previewText = DEFAULT_TEST_TEXT, stylisticAdaptation, sizeFilter, wrapText, globalShiftX = 0, selectedChar, activeDragTransform, activeDragTarget }: TextTesterProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   
@@ -174,7 +175,7 @@ export const TextTester = React.memo(({ font, chars, stylisticAdaptation, sizeFi
 
   const renderFullPreview = (fontSize: number) => {
     const diacritics = renderText(DIACRITICS_TEXT, fontSize);
-    const test = renderText(TEST_TEXT, fontSize);
+    const test = renderText(previewText, fontSize);
     
     return {
       elements: (
@@ -188,9 +189,9 @@ export const TextTester = React.memo(({ font, chars, stylisticAdaptation, sizeFi
     };
   };
 
-  const largeText = useMemo(() => renderFullPreview(64), [font, debouncedChars, stylisticAdaptation, wrapText, containerWidth, selectedChar]);
-  const mediumText = useMemo(() => renderFullPreview(24), [font, debouncedChars, stylisticAdaptation, wrapText, containerWidth, selectedChar]);
-  const smallText = useMemo(() => renderFullPreview(12), [font, debouncedChars, stylisticAdaptation, wrapText, containerWidth, selectedChar]);
+  const largeText = useMemo(() => renderFullPreview(64), [font, debouncedChars, stylisticAdaptation, wrapText, containerWidth, selectedChar, previewText]);
+  const mediumText = useMemo(() => renderFullPreview(24), [font, debouncedChars, stylisticAdaptation, wrapText, containerWidth, selectedChar, previewText]);
+  const smallText = useMemo(() => renderFullPreview(12), [font, debouncedChars, stylisticAdaptation, wrapText, containerWidth, selectedChar, previewText]);
 
   const showHeading = sizeFilter === 'all' || sizeFilter === 'heading';
   const showBody = sizeFilter === 'all' || sizeFilter === 'body';
