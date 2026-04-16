@@ -2149,7 +2149,7 @@ export function useFontEditor() {
 
     const diacriticType = getDiacriticType(char);
     const autoTransform = info.baseGlyph 
-      ? calculateAutoTransform(info.baseGlyph, diacriticType || 'acute', undefined, true, font, sourceInfo.diacriticTransform?.flipY) 
+      ? calculateAutoTransform(info.baseGlyph, diacriticType || 'acute', undefined, true, font) 
       : { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0, flipX: false, flipY: false, referenceTop: 700, baseWidth: 500 };
 
     const newChars = { ...chars };
@@ -2222,7 +2222,7 @@ export function useFontEditor() {
     if (!info || !diacriticGlyph) return;
 
     const autoTransform = info.baseGlyph 
-      ? calculateAutoTransform(info.baseGlyph, 'acute', diacriticGlyph, false, font, sourceInfo.diacriticTransform?.flipY) 
+      ? calculateAutoTransform(info.baseGlyph, 'acute', diacriticGlyph, false, font) 
       : { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0, flipX: false, flipY: false, referenceTop: 700, baseWidth: 500 };
 
     const newChars = { ...chars };
