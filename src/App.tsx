@@ -3,6 +3,7 @@ import { useDropzone, DropzoneOptions } from 'react-dropzone';
 import { Upload, Download, Settings, Type, RotateCcw, Undo2, Redo2, X, Clock, Trash2, Wand2, Shapes, FlipHorizontal, FlipVertical, MousePointer2, Eraser, Library, Minus, Plus, MoveHorizontal, Activity, AlertTriangle, CheckCircle2, Edit2, Check } from 'lucide-react';
 import { useFontEditor, CharInfo, CharStatus } from './hooks/useFontEditor';
 import { cn } from './lib/utils';
+import { useTranslation } from './lib/i18n';
 import { SINGLE_CHARS } from './constants';
 import { CanvasEditor } from './components/CanvasEditor';
 import { TextTester } from './components/TextTester';
@@ -143,6 +144,7 @@ const NumberWithButtons = ({
 };
 
 export default function App() {
+  const { t, lang, setLang } = useTranslation();
   const { 
     font, slaveFonts, fontName, chars, selectedChar, setSelectedChar, 
     loadFont, loadProject, deleteProject, closeProject,
@@ -381,7 +383,12 @@ export default function App() {
   if (!font) {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center p-4 font-sans">
-        <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+            <div className="absolute top-4 right-4 flex items-center bg-zinc-900 border border-zinc-800 rounded px-1 py-1 text-xs">
+              <button onClick={() => setLang('sk')} className={`px-3 py-1.5 rounded transition-colors ${lang === 'sk' ? 'bg-indigo-500/20 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300'}`}>SK</button>
+              <button onClick={() => setLang('cz')} className={`px-3 py-1.5 rounded transition-colors ${lang === 'cz' ? 'bg-indigo-500/20 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300'}`}>CZ</button>
+            </div>
+
           {/* Upload Section */}
           <div className="flex flex-col">
             <div className="flex items-center gap-4 mb-8">
@@ -389,27 +396,27 @@ export default function App() {
                 <Logo className="w-12 h-12" />
               </div>
               <div>
-                <h1 className="text-4xl font-bold tracking-tighter">GLYPHFORGE</h1>
-                <p className="text-zinc-500 text-sm">Created by <span className="text-indigo-400 font-medium">Flego</span></p>
+                <h1 className="text-4xl font-bold tracking-tighter">{t("app.title")}</h1>
+                <p className="text-zinc-500 text-sm">{t("app.createdBy")} <span className="text-indigo-400 font-medium">Flego</span></p>
               </div>
             </div>
-            <h2 className="text-2xl font-medium mb-6">Nový projekt</h2>
+            <h2 className="text-2xl font-medium mb-6">{t("app.newProject")}</h2>
             <div 
               {...getRootProps()} 
               className={cn(
                 "flex-1 p-12 border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-center cursor-pointer transition-colors min-h-[300px]",
                 isDragActive ? "border-indigo-500 bg-indigo-500/10" : "border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/50"
               )}
-              title="Kliknite alebo potiahnite súbory pre nahratie fontov"
+              title={t("app.dropHere")}
             >
               <input {...getInputProps()} />
               <Upload className="w-12 h-12 text-zinc-500 mb-4" />
-              <h3 className="text-xl font-medium mb-2">Nahrať fonty</h3>
+              <h3 className="text-xl font-medium mb-2">{t("app.uploadFonts") || "Nahrať fonty"}</h3>
               <p className="text-zinc-400 text-sm">
-                Potiahni a pusť sem súbory .ttf, .otf alebo .ufont, alebo klikni pre výber
+                {t("app.dropDesc") || "Potiahni a pusť sem..."}
               </p>
               <p className="text-zinc-500 text-xs mt-4">
-                Podporuje hromadné nahrávanie (Regular, Bold, atď.)
+                {t("app.bulkSupport") || "Podporuje hromadné nahrávanie..."}
               </p>
             </div>
           </div>
@@ -419,22 +426,8 @@ export default function App() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-medium flex items-center gap-2">
                 <Clock className="w-6 h-6 text-zinc-400" />
-                Nedávne projekty
+                {t("app.recentProjects") || "Nedávne projekty"}
               </h2>
-              {savedProjects.length > 0 && (
-                <button
-                  onClick={async () => {
-                    if (window.confirm('Naozaj chcete vymazať celú históriu projektov? Táto akcia je nevratná.')) {
-                      await db.clearProjects();
-                      loadSavedProjects();
-                    }
-                  }}
-                  className="text-xs text-zinc-500 hover:text-rose-400 flex items-center gap-1 transition-colors"
-                >
-                  <Trash2 size={14} />
-                  Vymazať históriu
-                </button>
-              )}
             </div>
             <div className="flex-1 bg-zinc-900/30 border border-zinc-800 rounded-xl overflow-hidden flex flex-col min-h-[300px] max-h-[500px]">
               {savedProjects.length === 0 ? (
@@ -442,8 +435,8 @@ export default function App() {
                   <div className="w-16 h-16 rounded-full bg-zinc-800/50 flex items-center justify-center mb-4">
                     <Clock className="w-8 h-8 text-zinc-600" />
                   </div>
-                  <p>Zatiaľ nemáte žiadne uložené projekty.</p>
-                  <p className="mt-1">Nahrajte font pre začiatok.</p>
+                  <p>{t("app.noSavedDesc") || "Zatiaľ nemáte žiadne uložené projekty."}</p>
+                  <p className="mt-1">{t("app.uploadToStart") || "Nahrajte font pre začiatok."}</p>
                 </div>
               ) : (
                 <ul className="overflow-y-auto flex-1 divide-y divide-zinc-800/50 p-2 space-y-1">
@@ -475,12 +468,12 @@ export default function App() {
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="text-[10px] font-medium px-2 py-1 bg-zinc-800 text-zinc-400 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                            Otvoriť
+                            {t("app.open") || "Otvoriť"}
                           </span>
                           <button 
                             onClick={(e) => handleDeleteProject(e, project.id)}
                             className="p-2 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                            title="Vymazať projekt"
+                            title={t("app.deleteProject") || "Vymazať projekt"}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -504,9 +497,9 @@ export default function App() {
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-zinc-950/60 backdrop-blur-md">
           <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-2xl shadow-2xl flex flex-col items-center max-w-sm w-full text-center">
             <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-6"></div>
-            <h2 className="text-xl font-semibold text-zinc-100 mb-2">Exportujem font</h2>
+            <h2 className="text-xl font-semibold text-zinc-100 mb-2">{t("export.title")}</h2>
             <p className="text-zinc-400 text-sm mb-6">
-              {exportingChar ? `Spracovávam znak: ${exportingChar}` : 'Zlučujem znaky a generujem nový súbor. Toto môže chvíľu trvať...'}
+              {exportingChar ? `${t("export.processing")} ${exportingChar}` : t("export.merging")}
             </p>
             <div className="w-full bg-zinc-800 rounded-full h-2 mb-2 overflow-hidden">
               <div 
@@ -526,18 +519,18 @@ export default function App() {
           <button 
             onClick={handleCloseProject}
             className="w-8 h-8 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 flex items-center justify-center transition-colors"
-            title="Zavrieť projekt a vrátiť sa na úvodnú obrazovku"
+            title={t("app.closeProject")}
           >
             <X size={18} />
           </button>
-          <div className="w-8 h-8 rounded bg-zinc-900 border border-zinc-800 flex items-center justify-center shadow-lg overflow-hidden" title="Logo aplikácie">
+          <div className="w-8 h-8 rounded bg-zinc-900 border border-zinc-800 flex items-center justify-center shadow-lg overflow-hidden" title={t("app.logo")}>
             <Logo className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-sm font-bold leading-tight tracking-tight">GLYPHFORGE</h1>
+            <h1 className="text-sm font-bold leading-tight tracking-tight">{t("app.title")}</h1>
             <div className="flex items-center gap-2">
-              <p className="text-[10px] text-zinc-500 leading-tight" title="Aktuálne načítaný font">{fontName}</p>
-              {hasUnsavedChanges && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title="Neuložené zmeny (automatické ukladanie prebieha...)"></span>}
+              <p className="text-[10px] text-zinc-500 leading-tight" title={t("app.loadedFont")}>{fontName}</p>
+              {hasUnsavedChanges && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title={t("app.unsavedChanges")}></span>}
               <span className="text-[10px] text-zinc-600 border-l border-zinc-800 pl-2">by Flego</span>
             </div>
           </div>
@@ -553,7 +546,7 @@ export default function App() {
               onTouchEnd={stopUndo}
               disabled={!canUndo}
               className="p-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
-              title="Krok späť (podržte pre rýchly návrat)"
+              title={t("app.undo")}
             >
               <Undo2 size={18} />
             </button>
@@ -565,7 +558,7 @@ export default function App() {
               onTouchEnd={stopRedo}
               disabled={!canRedo}
               className="p-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
-              title="Krok vpred (podržte pre rýchly posun)"
+              title={t("app.redo")}
             >
               <Redo2 size={18} />
             </button>
@@ -582,10 +575,10 @@ export default function App() {
           <button 
             onClick={handleImportJSONClick}
             className="px-3 py-1.5 text-sm font-medium bg-zinc-800 hover:bg-zinc-700 rounded-md transition-colors flex items-center gap-2"
-            title="Načítať predtým uložené nastavenia diakritiky z JSON súboru"
+            title={t("app.loadSettings")}
           >
             <Upload size={16} />
-            Importovať JSON
+            {t("app.importJson") || "Importovať JSON"}
           </button>
           <div className="flex items-center gap-2">
             {slaveFonts.length > 0 && (
@@ -596,29 +589,33 @@ export default function App() {
                   "px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2",
                   isBatchApplying ? "bg-zinc-800 text-zinc-500" : "bg-amber-600 hover:bg-amber-500 text-white"
                 )}
-                title="Aplikovať zmeny na všetky nahrané rezy fontu (Bold, Italic, atď.)"
+                title={t("app.applyVariants")}
               >
                 <Wand2 size={16} className={isBatchApplying ? "animate-spin" : ""} />
-                Batch Apply ({slaveFonts.length})
+                {t("app.batchApply") || "Aplikovať voľby"} ({slaveFonts.length})
               </button>
             )}
             <button 
               onClick={exportJSON}
               className="px-3 py-1.5 text-sm font-medium bg-zinc-800 hover:bg-zinc-700 rounded-md transition-colors flex items-center gap-2"
-              title="Uložiť aktuálne nastavenia diakritiky do JSON súboru"
+              title={t("app.saveSettings")}
             >
               <Download size={16} />
-              Exportovať JSON
+              {t("app.exportJson") || "Exportovať JSON"}
             </button>
           </div>
           <button 
             onClick={() => exportFont(stylisticAdaptation, globalShiftX)}
             className="px-3 py-1.5 text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-md transition-colors flex items-center gap-2"
-            title="Vygenerovať a stiahnuť upravený font (experimentálne)"
+            title={t("app.downloadFont")}
           >
             <Download size={16} />
-            Exportovať Font
+            {t("app.exportFontBtn") || "Exportovať Font"}
           </button>
+          <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded ml-2 px-1 py-1 text-xs">
+            <button onClick={() => setLang('sk')} className={`px-2 py-1 rounded transition-colors ${lang === 'sk' ? 'bg-indigo-500/20 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300'}`}>SK</button>
+            <button onClick={() => setLang('cz')} className={`px-2 py-1 rounded transition-colors ${lang === 'cz' ? 'bg-indigo-500/20 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300'}`}>CZ</button>
+          </div>
         </div>
         </div>
       </header>
@@ -628,34 +625,34 @@ export default function App() {
         {/* Left Panel: Character List */}
         <aside className="w-64 border-r border-zinc-800 flex flex-col bg-zinc-900/30 shrink-0 min-h-0">
           <div className="p-3 border-b border-zinc-800 flex flex-col gap-2 shrink-0">
-            <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider" title="Zoznam všetkých podporovaných znakov">Znaky</h2>
+            <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider" title={t("editor.characters")}>{t("editor.characters")}</h2>
             <div className="flex bg-zinc-950 border border-zinc-800 rounded-md p-0.5">
               <button 
                 onClick={() => setCharFilter('all')}
                 className={cn("flex-1 px-1 py-1 text-[10px] font-medium rounded transition-colors", charFilter === 'all' ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}
               >
-                Všetky
+                {t("charList.filter.all") || "Všetky"}
               </button>
               <button 
                 onClick={() => setCharFilter('modified')}
                 className={cn("flex-1 px-1 py-1 text-[10px] font-medium rounded transition-colors", charFilter === 'modified' ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}
               >
-                Upravené
+                {t("charList.filter.modified") || "Upravené"}
               </button>
               <button 
                 onClick={() => setCharFilter('original')}
                 className={cn("flex-1 px-1 py-1 text-[10px] font-medium rounded transition-colors", charFilter === 'original' ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}
               >
-                Pôvodné
+                {t("charList.filter.original") || "Pôvodné"}
               </button>
             </div>
             <button
               onClick={autoFixAll}
               className="mt-1 px-2 py-1.5 text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 rounded transition-all flex items-center justify-center gap-1.5"
-              title="Automaticky vyčistiť, doplniť chýbajúce, zložiť znaky a opraviť medzery"
+              title={t("tool.autoFixAllTitle")}
             >
               <Wand2 size={12} />
-              Auto Úprava
+              {t("tool.autoFixAll") || "Auto Úprava"}
             </button>
             <button
               onClick={() => {
@@ -668,10 +665,10 @@ export default function App() {
                 batchUpdateChars(updates);
               }}
               className="mt-1 px-2 py-1.5 text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 rounded transition-all flex items-center justify-center gap-1.5"
-              title="Vynútiť zloženie všetkých znakov zo základov a diakritiky z fontu"
+              title={t("tool.composeAllTitle")}
             >
               <Wand2 size={12} />
-              Zložiť všetky znaky
+              {t("tool.composeAll") || "Zložiť všetky znaky"}
             </button>
             <button
               onClick={() => {
@@ -688,34 +685,34 @@ export default function App() {
                 batchUpdateChars(updates);
               }}
               className="mt-1 px-2 py-1.5 text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700 hover:bg-zinc-700 hover:text-zinc-200 rounded transition-all flex items-center justify-center gap-1.5"
-              title="Vrátiť všetky znaky do pôvodného stavu"
+              title={t("tool.resetAllTitle")}
             >
               <RotateCcw size={12} />
-              Resetovať všetko
+              {t("tool.resetAll") || "Resetovať všetko"}
             </button>
             <button 
               onClick={batchGenerateMissing}
               className="mt-1 px-2 py-1.5 text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 rounded transition-all flex items-center justify-center gap-1.5"
-              title="Automaticky vygenerovať všetky chýbajúce znaky, pre ktoré existuje recept"
+              title={t("tool.generateMissingTitle")}
             >
               <Wand2 size={12} />
-              Doplniť chýbajúce
+              {t("tool.generateMissing") || "Doplniť chýbajúce"}
             </button>
             <button 
               onClick={batchCleanGlyphs}
               className="mt-1 px-2 py-1.5 text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 rounded transition-all flex items-center justify-center gap-1.5"
-              title="Automaticky vyčistiť a zlúčiť cesty pre všetky znaky s detekovanými problémami"
+              title={t("tool.cleanPathsTitle")}
             >
               <Shapes size={12} />
-              Vyčistiť všetky
+              {t("tool.cleanPaths") || "Vyčistiť všetky"}
             </button>
             <button 
               onClick={() => fixSideBearings()}
               className="mt-1 px-2 py-1.5 text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 rounded transition-all flex items-center justify-center gap-1.5"
-              title="Opraviť bočné medzery (Advance Width) pre všetky upravené znaky podľa ich základného znaku"
+              title={t("tool.fixSidebearingsTitle")}
             >
               <MoveHorizontal size={12} />
-              Opraviť medzery
+              {t("tool.fixSidebearings") || "Opraviť medzery"}
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-2">
@@ -734,21 +731,21 @@ export default function App() {
                   info.status === 'generated' || info.status === 'edited' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 border-transparent' :
                   'bg-rose-500/10 text-rose-400 border-rose-500/20';
 
-                let statusText = "Neznámy stav";
+                let statusText = t("app.statusUnknown");
                 if (info) {
-                  if (info.status === 'ok') statusText = "Pôvodný znak existuje";
-                  else if (info.status === 'missing') statusText = "Chýba základ alebo zdroj";
-                  else if (info.status === 'generated') statusText = "Zložený znak";
-                  else if (info.status === 'edited') statusText = "Manuálne upravené";
+                  if (info.status === 'ok') statusText = t('charList.status.ok');
+                  else if (info.status === 'missing') statusText = t("app.statusMissing");
+                  else if (info.status === 'generated') statusText = t('charList.status.generated');
+                  else if (info.status === 'edited') statusText = t('charList.status.edited');
                   
-                  if (info.isScaledToLowercase) statusText += " (Zmenšené na malé písmeno)";
+                  if (info.isScaledToLowercase) statusText += ` (${t('charList.scaledToLowercase')})`;
                 }
 
                 return (
                   <button
                     key={char}
                     onClick={() => setSelectedChar(char)}
-                    title={`Upraviť znak ${char} (${statusText})`}
+                    title={`${t("charList.editToolTip")} ${char} (${statusText})`}
                     className={cn(
                       "aspect-square flex items-center justify-center text-lg rounded border transition-all relative",
                       statusColor,
@@ -765,8 +762,8 @@ export default function App() {
                     {info?.isScaledToLowercase && (
                       <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400" title="Zmenšené na malé písmeno" />
                     )}
-                    {info?.anomalies?.includes('Diakritika sa prekrýva so základným znakom') && (
-                      <div className="absolute bottom-1 right-1 text-rose-500" title="Výstraha: Diakritika sa prekrýva so základným znakom">
+                    {info?.anomalies?.includes("anom.overlap") && (
+                      <div className="absolute bottom-1 right-1 text-rose-500" title={`Výstraha: ${t("check.overlap")}`}>
                         <AlertTriangle size={10} />
                       </div>
                     )}
@@ -782,8 +779,8 @@ export default function App() {
           {/* Top Half: Canvas Editor */}
           <div className="flex-1 relative flex flex-col border-b border-zinc-800 min-h-0">
             <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-              <div className="px-3 py-1.5 rounded-md bg-zinc-900/80 border border-zinc-800 text-sm backdrop-blur-sm flex items-center gap-2" title="Aktuálne vybraný znak na úpravu">
-                <span className="text-zinc-400">Úprava:</span>
+              <div className="px-3 py-1.5 rounded-md bg-zinc-900/80 border border-zinc-800 text-sm backdrop-blur-sm flex items-center gap-2" title={t("app.selectedCharDesc") || ""}>
+                <span className="text-zinc-400">{t("app.edit") || "Úprava:"}</span>
                 <span className="font-bold text-lg">{selectedChar}</span>
               </div>
               <button 
@@ -800,7 +797,7 @@ export default function App() {
                   window.dispatchEvent(new CustomEvent('reset-canvas-view'));
                 }}
                 className="px-3 py-1.5 rounded-md bg-zinc-900/80 border border-zinc-800 text-xs backdrop-blur-sm text-zinc-400 hover:text-zinc-200 transition-colors flex items-center gap-2"
-                title="Vrátiť pohľad na stred"
+                title={t("app.recenterView")}
               >
                 <RotateCcw size={14} />
                 Vycentrovať pohľad
@@ -813,7 +810,7 @@ export default function App() {
                     "p-2 rounded-md transition-all",
                     activeTool === 'select' ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
                   )}
-                  title="Nástroj výber a presun (V)"
+                  title={t("canvas.selectTool")}
                 >
                   <MousePointer2 size={18} />
                 </button>
@@ -823,7 +820,7 @@ export default function App() {
                     "p-2 rounded-md transition-all",
                     activeTool === 'eraser' ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
                   )}
-                  title="Guma - vymazať časti znaku (E)"
+                  title={t("canvas.eraserTool")}
                 >
                   <Eraser size={18} />
                 </button>
@@ -832,7 +829,7 @@ export default function App() {
               {activeTool === 'eraser' && (
                 <div className="px-3 py-2 rounded-lg bg-zinc-900/80 border border-zinc-800 backdrop-blur-sm flex flex-col gap-2">
                   <div className="flex justify-between items-center gap-4">
-                    <span className="text-[10px] text-zinc-500 uppercase font-bold">Veľkosť gumy</span>
+                    <span className="text-[10px] text-zinc-500 uppercase font-bold">{t("canvas.eraserSize")}</span>
                     <span className="text-xs text-indigo-400 font-mono">{eraserSize}</span>
                   </div>
                   <input 
@@ -863,22 +860,22 @@ export default function App() {
                 />
               ) : (
                 <div className="text-zinc-600 flex flex-col items-center">
-                  <span className="text-sm">Vyberte znak na úpravu z ľavého panela</span>
+                  <span className="text-sm">{t("canvas.selectCharDesc")}</span>
                 </div>
               )}
             </div>
 
             <div className="absolute bottom-4 left-4 z-10 text-xs text-zinc-500 flex gap-4 pointer-events-none">
-              <span className="bg-zinc-900/80 px-2 py-1 rounded backdrop-blur-sm">Potiahnutím presuniete diakritiku</span>
-              <span className="bg-zinc-900/80 px-2 py-1 rounded backdrop-blur-sm">Medzerník + Ťahanie pre posun plátna</span>
-              <span className="bg-zinc-900/80 px-2 py-1 rounded backdrop-blur-sm">Rolovaním priblížite/oddialite</span>
+              <span className="bg-zinc-900/80 px-2 py-1 rounded backdrop-blur-sm">{t("canvas.hintDrag")}</span>
+              <span className="bg-zinc-900/80 px-2 py-1 rounded backdrop-blur-sm">{t("canvas.hintPan")}</span>
+              <span className="bg-zinc-900/80 px-2 py-1 rounded backdrop-blur-sm">{t("app.scrollZoom") || "Zoom"}</span>
             </div>
           </div>
 
           <div className="h-72 shrink-0 bg-zinc-950 flex flex-col border-t border-zinc-800">
             <div className="px-4 py-2 border-b border-zinc-800 bg-zinc-900/50 text-xs font-medium text-zinc-400 uppercase tracking-wider shrink-0 flex justify-between items-center">
               <div className="flex items-center gap-4">
-                <span>Náhľad textu</span>
+                <span>{t("preview.title")}</span>
                 <div className="flex bg-zinc-950 border border-zinc-800 rounded p-0.5 ml-2">
                   {(['all', 'heading', 'body', 'micro'] as const).map((f) => (
                     <button
@@ -889,7 +886,7 @@ export default function App() {
                         sizeFilter === f ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300"
                       )}
                     >
-                      {f === 'all' ? 'Všetky' : f === 'heading' ? 'Nadpis' : f === 'body' ? 'Bežný' : 'Micro'}
+                      {f === 'all' ? (t('app.previewAll') || 'Všetky') : f === 'heading' ? (t('app.previewHeading') || 'Nadpis') : f === 'body' ? (t('app.previewBody') || 'Bežný') : 'Micro'}
                     </button>
                   ))}
                 </div>
@@ -917,13 +914,13 @@ export default function App() {
                   <button 
                     onClick={() => setIsEditingPreviewText(true)}
                     className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
-                    title="Upraviť náhľadový text"
+                    title={t("app.editPreview")}
                   >
                     <Edit2 size={10} />
                     Upraviť text
                   </button>
                 )}
-                <label className="flex items-center gap-2 cursor-pointer" title="Zalomiť text v náhľade">
+                <label className="flex items-center gap-2 cursor-pointer" title={t("preview.wrap")}>
                   <input 
                     type="checkbox" 
                     checked={wrapText} 
@@ -967,18 +964,18 @@ export default function App() {
         <aside className="w-72 border-l border-zinc-800 flex flex-col bg-zinc-900/30 shrink-0 min-h-0">
           <div className="p-3 border-b border-zinc-800 flex items-center gap-2 shrink-0">
             <Settings size={16} className="text-zinc-400" />
-            <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider" title="Nastavenia a vlastnosti vybraného znaku">Vlastnosti</h2>
+            <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider" title={t("editor.properties")}>{t("editor.properties")}</h2>
           </div>
           
           <div className="p-4 flex flex-col gap-6 overflow-y-auto min-h-0 scrollbar-thin">
             {/* Global Settings */}
             <div className="pb-6 border-b border-zinc-800/50">
               <div className="flex items-center justify-between mb-2">
-                <label className="text-xs text-zinc-500 block font-medium uppercase tracking-wider">Globálne nastavenia</label>
+                <label className="text-xs text-zinc-500 block font-medium uppercase tracking-wider">{t("app.globalSettings") || "Str"}</label>
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs text-zinc-400 mb-1.5 block" title="Posunie diakritiku na všetkých znakoch o zadanú hodnotu (užitočné pre kurzívu)">Globálny posun X (Kurzíva)</label>
+                  <label className="text-xs text-zinc-400 mb-1.5 block" title={t("app.globalOffsetDesc")}>{t("adv.globalOffsetX")}</label>
                   <div className="flex items-center gap-2">
                     <input 
                       type="range" 
@@ -1003,23 +1000,23 @@ export default function App() {
               <>
                 {/* Status */}
               <div>
-                <label className="text-xs text-zinc-500 mb-1.5 block" title="Aktuálny stav znaku vo fonte">Stav</label>
+                <label className="text-xs text-zinc-500 mb-1.5 block" title="Aktuálny stav znaku vo fonte">{t("props.status")}</label>
                 <div className="flex flex-col gap-2">
                   <div className="text-sm px-3 py-2 rounded bg-zinc-800/50 border border-zinc-700/50 flex justify-between items-center">
-                    {selectedInfo.status === 'ok' && <span className="text-emerald-400">Pôvodný znak existuje</span>}
-                    {selectedInfo.status === 'missing' && <span className="text-rose-400">Chýba základ alebo zdroj</span>}
-                    {selectedInfo.status === 'generated' && <span className="text-indigo-400">Zložený znak</span>}
-                    {selectedInfo.status === 'edited' && <span className="text-indigo-400">Manuálne upravené</span>}
+                    {selectedInfo.status === 'ok' && <span className="text-emerald-400">{t("charList.status.ok")}</span>}
+                    {selectedInfo.status === 'missing' && <span className="text-rose-400">{t("app.statusMissing")}</span>}
+                    {selectedInfo.status === 'generated' && <span className="text-indigo-400">{t("charList.status.generated")}</span>}
+                    {selectedInfo.status === 'edited' && <span className="text-indigo-400">{t("charList.status.edited")}</span>}
                   </div>
                   
                   {selectedInfo.status === 'ok' && selectedInfo.baseGlyph && selectedInfo.diacriticGlyph && (
                     <button 
                       onClick={() => applySvgStyle('auto', selectedChar)}
                       className="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
-                      title="Nahradiť pôvodný znak zloženým znakom (základ + diakritika) pre možnosť úpravy"
+                      title={t("props.splitOriginalTitle")}
                     >
                       <Wand2 size={10} />
-                      Prepnúť na úpravu diakritiky
+                      {t("app.switchToDiacritic") || "Prepnúť"}
                     </button>
                   )}
 
@@ -1041,7 +1038,7 @@ export default function App() {
                         });
                       }}
                       className="w-full mt-2 px-3 py-2 text-xs bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 rounded transition-all flex items-center justify-center gap-2"
-                      title="Vrátiť všetky úpravy tohto znaku do pôvodného stavu"
+                      title={t("props.resetCharTitle")}
                     >
                       <RotateCcw size={14} />
                       Resetovať tento znak
@@ -1055,26 +1052,26 @@ export default function App() {
                 <div className="pt-6 border-t border-zinc-800/50">
                   <h3 className="text-xs font-medium text-rose-400 mb-3 flex items-center gap-2">
                     <X size={14} />
-                    Detekované anomálie
+                    {t("app.anomalies") || "Anomálie"}
                   </h3>
                   <ul className="space-y-1">
                     {selectedInfo.anomalies.map((anomaly, i) => (
                       <li key={i} className="text-xs text-rose-300 bg-rose-500/10 px-2 py-1 rounded">
-                        {anomaly}
+                        {t(anomaly as any) || anomaly}
                       </li>
                     ))}
                   </ul>
-                  {(selectedInfo.anomalies.includes('Malé izolované časti') || selectedInfo.anomalies.includes('Prekrývajúce sa alebo zložité cesty')) && (
+                  {(selectedInfo.anomalies.includes('anom.islands') || selectedInfo.anomalies.includes('anom.complex')) && (
                     <button 
                       onClick={() => cleanGlyphPaths(selectedChar)}
                       className="w-full mt-3 px-3 py-2 text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 rounded transition-all flex items-center justify-center gap-2"
-                      title="Automaticky zlúčiť prekrývajúce sa cesty a vyčistiť tvar"
+                      title={t("app.autoMerge")}
                     >
                       <Wand2 size={12} />
-                      Vyčistiť a zlúčiť cesty
+                      {t("app.cleanPaths") || "Vyčistiť"}
                     </button>
                   )}
-                  {selectedInfo.anomalies.includes('Príliš úzke bočné medzery (presah)') && (
+                  {selectedInfo.anomalies.includes('anom.narrow') && (
                     <button 
                       onClick={() => {
                         // This is a bit simplified, but we can try to auto-adjust advance width
@@ -1087,7 +1084,7 @@ export default function App() {
                         }
                       }}
                       className="w-full mt-2 px-3 py-2 text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 rounded transition-all flex items-center justify-center gap-2"
-                      title="Automaticky upraviť šírku znaku tak, aby glyf nepresahoval"
+                      title={t("props.fixWidthTitle")}
                     >
                       <Wand2 size={12} />
                       Opraviť šírku znaku
@@ -1099,11 +1096,11 @@ export default function App() {
               {/* Source Selection */}
               <div className="pb-6 border-b border-zinc-800/50">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs text-zinc-500 block" title="Odkiaľ sa berie tvar diakritiky">Zdroj diakritiky</label>
+                  <label className="text-xs text-zinc-500 block" title={t("app.diacriticSourceDesc")}>{t("props.diacriticSource")}</label>
                   <button 
                     onClick={() => applySourceToAll(selectedChar)}
                     className="text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1"
-                    title="Použiť tento zdroj diakritiky pre všetky znaky"
+                    title={t("props.applyToAllSourceTitle")}
                   >
                     Použiť na všetko
                   </button>
@@ -1116,10 +1113,10 @@ export default function App() {
                         "flex flex-col items-center gap-1 p-2 rounded border text-[10px] transition-all",
                         (selectedInfo.status === 'ok') ? "bg-indigo-500/20 border-indigo-500 text-indigo-400 ring-1 ring-indigo-500/50" : "bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:bg-zinc-800"
                       )}
-                      title="Použiť pôvodný glyf priamo z fontu"
+                      title={t("app.useOriginal")}
                     >
                       <Type size={16} />
-                      <span>Pôvodný</span>
+                      <span>{t("app.original") || "Original"}</span>
                     </button>
                   )}
                   <button
@@ -1128,13 +1125,13 @@ export default function App() {
                       "flex flex-col items-center gap-1 p-2 rounded border text-[10px] transition-all relative overflow-hidden",
                       (selectedInfo.status !== 'ok' && !selectedInfo.svgDiacritic) ? "bg-indigo-500/20 border-indigo-500 text-indigo-400 ring-1 ring-indigo-500/50" : "bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:bg-zinc-800"
                     )}
-                    title="Vytvoriť zložený znak zo základného písmena a diakritiky z fontu"
+                    title={t("props.createCompound")}
                   >
                     <Wand2 size={16} />
-                    <span>Zložený</span>
+                    <span>{t("app.compound") || "Zložený"}</span>
                     {selectedInfo.diacriticSource && (
                       <span className="absolute top-0 right-0 bg-indigo-500 text-[8px] text-white px-1 rounded-bl">
-                        {selectedInfo.diacriticSource === 'standalone' ? 'Pôv' : 'Krad'}
+                        {selectedInfo.diacriticSource === 'standalone' ? (t('app.pov') || 'Pôv') : (t('app.krad') || 'Krad')}
                       </span>
                     )}
                   </button>
@@ -1146,14 +1143,14 @@ export default function App() {
                         "flex flex-col items-center gap-1 p-2 rounded border text-[10px] transition-all",
                         (selectedInfo.svgDiacritic?.style === style) ? "bg-indigo-500/20 border-indigo-500 text-indigo-400 ring-1 ring-indigo-500/50" : "bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:bg-zinc-800"
                       )}
-                      title={`Použiť SVG diakritiku v štýle ${style}`}
+                      title={`${t("app.useSvgStyle")} ${style}`}
                     >
                       <Shapes size={16} />
                       <span>SVG {style}</span>
                     </button>
                   ))}
                   <div className="col-span-2 pt-2 border-t border-zinc-800/50">
-                    <label className="text-[10px] text-zinc-500 mb-1 block">Extrahované z iných znakov</label>
+                    <label className="text-[10px] text-zinc-500 mb-1 block">{t("props.extractedFrom")}</label>
                     <div className="grid grid-cols-4 gap-1 mb-2">
                       {Object.entries(chars)
                         .filter(([char, info]) => info.diacriticGlyph && char !== selectedChar)
@@ -1162,7 +1159,7 @@ export default function App() {
                             key={`extracted-${char}`}
                             onClick={() => applyDiacriticFromChar(char, selectedChar)}
                             className="p-1 bg-zinc-800 hover:bg-zinc-700 rounded border border-zinc-700 flex flex-col items-center justify-center gap-1"
-                            title={`Použiť diakritiku zo znaku ${char}`}
+                            title={`${t("props.useDiacriticFrom")} ${char}`}
                           >
                             <span className="text-[8px] text-zinc-500 leading-none">z {char}</span>
                             <svg viewBox={`${-font.unitsPerEm * 0.2} ${-font.unitsPerEm * 1.1} ${font.unitsPerEm * 0.8} ${font.unitsPerEm}`} className="w-5 h-5 text-zinc-300 fill-current">
@@ -1171,7 +1168,7 @@ export default function App() {
                           </button>
                         ))}
                     </div>
-                    <label className="text-[10px] text-zinc-500 mb-1 block">Iná diakritika z fontu</label>
+                    <label className="text-[10px] text-zinc-500 mb-1 block">{t("props.otherDiacritics")}</label>
                     <div className="grid grid-cols-4 gap-1 max-h-32 overflow-y-auto scrollbar-thin pr-1">
                       {Array.from({ length: font.glyphs.length }).map((_, i) => font.glyphs.get(i)).filter(g => {
                         if (!g.name) return false;
@@ -1197,11 +1194,11 @@ export default function App() {
                     {selectedInfo && (selectedInfo.svgDiacritic || selectedInfo.diacriticGlyph) && (
                       <button
                         onClick={() => {
-                          const name = prompt("Zadajte názov pre diakritiku:");
+                          const name = prompt(t("prompt.diacriticName"));
                           if (name) saveCurrentDiacriticToLibrary(name);
                         }}
                         className="w-full mt-2 p-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[10px] transition-colors"
-                        title="Pridať aktuálnu diakritiku do knižnice"
+                        title={t("app.addToLib")}
                       >
                         Pridať do knižnice
                       </button>
@@ -1213,19 +1210,19 @@ export default function App() {
               {/* Transform Controls */}
               <div className="pt-2 space-y-4">
                 <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
-                  <h3 className="text-xs font-medium text-zinc-300" title="Možnosti úpravy pozície a tvaru">Transformácia</h3>
+                  <h3 className="text-xs font-medium text-zinc-300" title="Možnosti úpravy pozície a tvaru">{t("props.transform")}</h3>
                   <div className="flex items-center gap-3">
                     <button 
                       onClick={() => applyTransformToAll(selectedChar)}
                       className="text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors"
-                      title="Použiť túto transformáciu pre všetky znaky"
+                      title={t("props.applyToAllTransformTitle")}
                     >
                       Použiť na všetko
                     </button>
                     <button 
                       onClick={() => updateCharTransform(selectedChar, { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, skewX: 0, skewY: 0 }, editTarget)}
                       className="text-zinc-500 hover:text-zinc-300 transition-colors"
-                      title="Obnoviť predvolenú transformáciu"
+                      title={t("props.resetTransform")}
                     >
                       <RotateCcw size={14} />
                     </button>
@@ -1263,24 +1260,24 @@ export default function App() {
                         ? "bg-amber-500/20 text-amber-400 border-amber-500/50 hover:bg-amber-500/30" 
                         : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700"
                     )}
-                    title="Zmenšiť celý znak na veľkosť malého písmena (prejaví sa v náhľade a pri exporte)"
+                    title={t("props.shrinkToLower") || "Zmenšiť celý znak na veľkosť malého písmena (prejaví sa v náhľade a pri exporte)"}
                   >
-                    {selectedInfo.isScaledToLowercase ? "Zmenšenie zapnuté" : "Zmenšiť na malé písmeno"}
+                    {selectedInfo.isScaledToLowercase ? (t("props.shrinkOn") || "Zmenšenie zapnuté") : (t("props.shrinkToLower") || "Zmenšiť na malé písmeno")}
                   </button>
                   <button
                     onClick={() => fixSideBearings(selectedChar)}
                     className="flex-1 flex items-center justify-center gap-2 py-1.5 rounded text-[10px] transition-colors border bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700"
-                    title="Opraviť bočné medzery (Advance Width) podľa základného znaku"
+                    title={t("tool.fixSidebearingsTitle") || "Opraviť bočné medzery (Advance Width) podľa základného znaku"}
                   >
                     <MoveHorizontal size={12} />
-                    Opraviť medzery
+                    {t("tool.fixSidebearings") || "Opraviť medzery"}
                   </button>
                 </div>
 
                 <button
                   onClick={batchScaleToLowercase}
                   className="w-full flex items-center justify-center gap-2 py-1.5 rounded text-[10px] transition-colors border bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700"
-                  title="Aplikovať zmenšenie na všetky malé písmená s diakritikou (ľ, š, č, ť, ž, ň, ď, ě, ř, ô, ů, ä)"
+                  title={t("app.scaleDesc")}
                 >
                   <Wand2 size={12} />
                   Zmenšiť všetky malé znaky
@@ -1288,41 +1285,41 @@ export default function App() {
                 
                 <div className="space-y-3">
                   <SliderWithButtons 
-                    label="Celková mierka"
+                    label={t("props.scale")}
                     value={(editTarget === 'base' ? selectedInfo.baseTransform?.scaleX : selectedInfo.diacriticTransform?.scaleX) ?? 1}
                     min={0.01}
                     max={10}
                     step={0.01}
                     onChange={(val) => updateCharTransform(selectedChar, { scaleX: val, scaleY: val }, editTarget)}
-                    title="Celkové zväčšenie/zmenšenie"
+                    title={t("app.scaleAll")}
                   />
 
                   <SliderWithButtons 
-                    label="Posun X"
+                    label={t("props.offsetX")}
                     value={(editTarget === 'base' ? selectedInfo.baseTransform?.x : selectedInfo.diacriticTransform?.x) ?? 0}
                     min={-3000}
                     max={3000}
                     onChange={(val) => updateCharTransform(selectedChar, { x: val }, editTarget)}
-                    title="Horizontálny posun"
+                    title={t("app.moveH")}
                   />
 
                   <SliderWithButtons 
-                    label="Posun Y"
+                    label={t("props.offsetY")}
                     value={(editTarget === 'base' ? selectedInfo.baseTransform?.y : selectedInfo.diacriticTransform?.y) ?? 0}
                     min={-3000}
                     max={3000}
                     onChange={(val) => updateCharTransform(selectedChar, { y: val }, editTarget)}
-                    title="Vertikálny posun"
+                    title={t("app.moveV")}
                   />
 
                   <SliderWithButtons 
-                    label="Rotácia (°)"
+                    label={t("props.rotation")}
                     value={(editTarget === 'base' ? selectedInfo.baseTransform?.rotation : selectedInfo.diacriticTransform?.rotation) ?? 0}
                     min={-180}
                     max={180}
                     unit="°"
                     onChange={(val) => updateCharTransform(selectedChar, { rotation: val }, editTarget)}
-                    title="Otočenie v stupňoch"
+                    title={t("app.rotateDeg")}
                   />
 
                   <div className="grid grid-cols-2 gap-2 pt-2">
@@ -1332,10 +1329,10 @@ export default function App() {
                         "flex items-center justify-center gap-2 p-2 rounded border text-[10px] transition-all",
                         (editTarget === 'base' ? selectedInfo.baseTransform?.flipX : selectedInfo.diacriticTransform?.flipX) ? "bg-indigo-500/20 border-indigo-500 text-indigo-400 ring-1 ring-indigo-500/50" : "bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:bg-zinc-800"
                       )}
-                      title="Zrkadlovo otočiť horizontálne"
+                      title={t("app.flipH")}
                     >
                       <FlipHorizontal size={14} />
-                      <span>Zrkadliť X</span>
+                      <span>{t("props.flipX")}</span>
                     </button>
                     <button 
                       onClick={() => updateCharTransform(selectedChar, { flipY: !(editTarget === 'base' ? selectedInfo.baseTransform?.flipY : selectedInfo.diacriticTransform?.flipY) }, editTarget)}
@@ -1343,64 +1340,64 @@ export default function App() {
                         "flex items-center justify-center gap-2 p-2 rounded border text-[10px] transition-all",
                         (editTarget === 'base' ? selectedInfo.baseTransform?.flipY : selectedInfo.diacriticTransform?.flipY) ? "bg-indigo-500/20 border-indigo-500 text-indigo-400 ring-1 ring-indigo-500/50" : "bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:bg-zinc-800"
                       )}
-                      title="Zrkadlovo otočiť vertikálne"
+                      title={t("app.flipV")}
                     >
                       <FlipVertical size={14} />
-                      <span>Zrkadliť Y</span>
+                      <span>{t("props.flipY")}</span>
                     </button>
                   </div>
 
                   <div className="space-y-3 pt-2 border-t border-zinc-800/50">
                     <NumberWithButtons 
-                      label="Mierka X"
+                      label={t("props.scaleX")}
                       value={(editTarget === 'base' ? selectedInfo.baseTransform?.scaleX : selectedInfo.diacriticTransform?.scaleX) ?? 1}
                       onChange={(val) => updateCharTransform(selectedChar, { scaleX: val }, editTarget)}
-                      title="Horizontálne zväčšenie/zmenšenie"
+                      title={t("app.scaleH")}
                     />
                     <NumberWithButtons 
-                      label="Mierka Y"
+                      label={t("props.scaleY")}
                       value={(editTarget === 'base' ? selectedInfo.baseTransform?.scaleY : selectedInfo.diacriticTransform?.scaleY) ?? 1}
                       onChange={(val) => updateCharTransform(selectedChar, { scaleY: val }, editTarget)}
-                      title="Vertikálne zväčšenie/zmenšenie"
+                      title={t("app.scaleV")}
                     />
                   </div>
 
                   <div className="space-y-4 pt-2 border-t border-zinc-800/50">
                     <SliderWithButtons 
-                      label="Skosenie X"
+                      label={t("props.skewX")}
                       value={(editTarget === 'base' ? selectedInfo.baseTransform?.skewX : selectedInfo.diacriticTransform?.skewX) ?? 0}
                       min={-45}
                       max={45}
                       unit="°"
                       onChange={(val) => updateCharTransform(selectedChar, { skewX: val }, editTarget)}
-                      title="Horizontálne skosenie (naklonenie) v stupňoch"
+                      title={t("app.skewHDeg")}
                     />
                     <SliderWithButtons 
-                      label="Skosenie Y"
+                      label={t("props.skewY")}
                       value={(editTarget === 'base' ? selectedInfo.baseTransform?.skewY : selectedInfo.diacriticTransform?.skewY) ?? 0}
                       min={-45}
                       max={45}
                       unit="°"
                       onChange={(val) => updateCharTransform(selectedChar, { skewY: val }, editTarget)}
-                      title="Vertikálne skosenie v stupňoch"
+                      title={t("app.skewVDeg")}
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Pokročilá kontrola */}
+              {/* {t("check.title")} */}
               {analysis && (
                 <div className="pt-4 space-y-3 border-t border-zinc-800/50">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-medium text-zinc-300 flex items-center gap-2" title="Analýza proporcií a kerningu">
+                    <h3 className="text-xs font-medium text-zinc-300 flex items-center gap-2" title={t("app.propAnalysis")}>
                       <Activity size={14} className="text-blue-400" />
-                      Pokročilá kontrola
+                      {t("check.title")}
                     </h3>
                   </div>
                   
                   {analysis.isSvg ? (
                     <div className="text-[10px] text-zinc-500 italic px-2">
-                      Pokročilá kontrola momentálne nepodporuje SVG diakritiku.
+                      {t("check.svgNotSupported")}
                     </div>
                   ) : (
                     <div className="space-y-2 px-1">
@@ -1409,7 +1406,7 @@ export default function App() {
                         "flex items-center justify-between text-[10px] px-1 py-0.5 rounded border",
                         analysis.heightRatio > 40 || analysis.heightRatio < 10 ? "border-rose-500/50 bg-rose-500/5" : "border-transparent"
                       )}>
-                        <span className="text-zinc-400">Pomer výšky (voči základu):</span>
+                        <span className="text-zinc-400">{t("app.heightRatio") || "Výška:"}</span>
                         <span className={cn("font-medium", analysis.heightRatio > 40 || analysis.heightRatio < 10 ? "text-amber-400" : "text-emerald-400")}>
                           {analysis.heightRatio.toFixed(1)}%
                         </span>
@@ -1419,7 +1416,7 @@ export default function App() {
                         "flex items-center justify-between text-[10px] px-1 py-0.5 rounded border",
                         analysis.widthRatio > 80 ? "border-rose-500/50 bg-rose-500/5" : "border-transparent"
                       )}>
-                        <span className="text-zinc-400">Pomer šírky (voči základu):</span>
+                        <span className="text-zinc-400">{t("app.widthRatio") || "Šírka:"}</span>
                         <span className={cn("font-medium", analysis.widthRatio > 80 ? "text-amber-400" : "text-emerald-400")}>
                           {analysis.widthRatio.toFixed(1)}%
                         </span>
@@ -1430,25 +1427,25 @@ export default function App() {
                         {analysis.leftOverflow > 0 && (
                           <div className="flex items-start gap-1.5 text-[10px] text-amber-400 bg-amber-500/10 p-1.5 rounded border border-amber-500/20">
                             <AlertTriangle size={12} className="shrink-0 mt-0.5" />
-                            <span>Znamienko presahuje doľava ({Math.round(analysis.leftOverflow)} j.). Môže kolidovať s predchádzajúcim znakom.</span>
+                            <span>{t("check.overflowLeft", {val: String(Math.round(analysis.leftOverflow))})}</span>
                           </div>
                         )}
                         {analysis.rightOverflow > 0 && (
                           <div className="flex items-start gap-1.5 text-[10px] text-amber-400 bg-amber-500/10 p-1.5 rounded border border-amber-500/20">
                             <AlertTriangle size={12} className="shrink-0 mt-0.5" />
-                            <span>Znamienko presahuje doprava ({Math.round(analysis.rightOverflow)} j.). Môže kolidovať s nasledujúcim znakom.</span>
+                            <span>{t("check.overflowRight", {val: String(Math.round(analysis.rightOverflow))})}</span>
                           </div>
                         )}
                         {analysis.overlap && (
                           <div className="flex items-start gap-1.5 text-[10px] text-amber-400 bg-amber-500/10 p-1.5 rounded border border-amber-500/20">
                             <AlertTriangle size={12} className="shrink-0 mt-0.5" />
-                            <span>Znamienko sa vertikálne prekrýva so základným znakom.</span>
+                            <span>{t("check.overlap")}</span>
                           </div>
                         )}
                         {analysis.leftOverflow === 0 && analysis.rightOverflow === 0 && !analysis.overlap && analysis.heightRatio >= 10 && analysis.heightRatio <= 40 && (
                           <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 bg-emerald-500/10 p-1.5 rounded border border-emerald-500/20">
                             <CheckCircle2 size={12} />
-                            <span>Nezistili sa žiadne zjavné problémy s proporciami alebo kerningom.</span>
+                            <span>{t("check.proportionOK")}</span>
                           </div>
                         )}
                       </div>
@@ -1460,9 +1457,9 @@ export default function App() {
               {/* Diacritic Library */}
               <div className="space-y-3 pt-6 border-t border-zinc-800/50">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-medium text-zinc-300 flex items-center gap-2" title="Knižnica uložených diakritických znamienok">
+                  <h3 className="text-xs font-medium text-zinc-300 flex items-center gap-2" title={t("app.libDesc")}>
                     <Library size={14} className="text-indigo-400" />
-                    Knižnica diakritiky
+                    {t("app.diacriticLibrary")}
                   </h3>
                   <span className="text-[10px] text-zinc-500 bg-zinc-800 px-1.5 py-0.5 rounded-full">{libraryDiacritics.length}</span>
                 </div>
@@ -1474,7 +1471,7 @@ export default function App() {
                         <button 
                           onClick={() => selectedChar && applyLibraryDiacritic(d, selectedChar)}
                           className="flex-1 flex items-center gap-3 text-left"
-                          title="Použiť toto znamienko na vybraný znak"
+                          title={t("app.applyTarget")}
                         >
                           <div className="w-12 h-12 bg-zinc-900 rounded flex items-center justify-center shrink-0 overflow-hidden border border-zinc-800/50">
                             <svg viewBox={`${-font.unitsPerEm * 0.2} ${-font.unitsPerEm * 1.1} ${font.unitsPerEm * 0.8} ${font.unitsPerEm}`} className="w-10 h-10 text-indigo-400 fill-current">
@@ -1502,7 +1499,7 @@ export default function App() {
 
               {/* Advanced */}
               <div className="space-y-4">
-                <h3 className="text-xs font-medium text-zinc-300 border-b border-zinc-800 pb-2" title="Pokročilé nastavenia znaku">Pokročilé</h3>
+                <h3 className="text-xs font-medium text-zinc-300 border-b border-zinc-800 pb-2" title="Pokročilé nastavenia znaku">{t("adv.title")}</h3>
                 
                 <label className="flex items-start gap-3 cursor-pointer group">
                   <div className="relative flex items-center justify-center mt-0.5">
@@ -1518,8 +1515,8 @@ export default function App() {
                     </svg>
                   </div>
                   <div>
-                    <span className="text-sm text-zinc-300 group-hover:text-zinc-100 transition-colors">Štýlová adaptácia akcentu</span>
-                    <p className="text-xs text-zinc-500 mt-1">Automaticky prispôsobí textúru a ťah diakritiky základnému písmenu.</p>
+                    <span className="text-sm text-zinc-300 group-hover:text-zinc-100 transition-colors">{t("app.styleAdapt") || "Adp"}</span>
+                    <p className="text-xs text-zinc-500 mt-1">{t("app.styleAdaptDesc") || "Desc"}</p>
                   </div>
                 </label>
 
@@ -1537,13 +1534,13 @@ export default function App() {
                     </svg>
                   </div>
                   <div>
-                    <span className="text-sm text-zinc-300 group-hover:text-zinc-100 transition-colors">Heatmapa metrík</span>
-                    <p className="text-xs text-zinc-500 mt-1">Vizualizácia hustoty a bočných medzier (sidebearings).</p>
+                    <span className="text-sm text-zinc-300 group-hover:text-zinc-100 transition-colors">{t("app.heatmap") || "Heatmapa"}</span>
+                    <p className="text-xs text-zinc-500 mt-1">{t("app.heatmapDesc") || "Vizualizácia"}</p>
                   </div>
                 </label>
 
-                <div title="Celková šírka znaku (určuje, kde začne ďalší znak)">
-                  <label className="text-xs text-zinc-500 mb-1 block">Šírka znaku (Advance Width)</label>
+                <div title={t("app.totalWidth")}>
+                  <label className="text-xs text-zinc-500 mb-1 block">{t("adv.advanceWidth")}</label>
                   <input 
                     type="number" 
                     className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-sm" 
@@ -1559,10 +1556,10 @@ export default function App() {
                     <button 
                       onClick={() => updateEraserPaths(selectedChar, [])}
                       className="w-full px-3 py-2 text-xs bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 rounded transition-all flex items-center justify-center gap-2"
-                      title="Vymazať všetky ťahy gumou pre tento znak"
+                      title={t("app.eraseAll")}
                     >
                       <Trash2 size={14} />
-                      Obnoviť pôvodný tvar (zmazať gumu)
+                      {t("app.restoreShape") || "Obnoviť"}
                     </button>
                   </div>
                 )}

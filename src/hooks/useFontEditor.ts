@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslation } from '../lib/i18n';
 import * as opentype from 'opentype.js';
 import paper from 'paper';
 import { v4 as uuidv4 } from 'uuid';
@@ -741,6 +742,7 @@ function calculateAutoTransform(
 }
 
 export function useFontEditor() {
+  const { t } = useTranslation();
   const [projectId, setProjectId] = useState<string | null>(null);
   const [font, setFont] = useState<opentype.Font | null>(null);
   const [slaveFonts, setSlaveFonts] = useState<{ font: opentype.Font, name: string, buffer: ArrayBuffer }[]>([]);
@@ -833,14 +835,14 @@ export function useFontEditor() {
       return opentype.parse(buffer);
     } catch (parseErr: any) {
       if (parseErr.message && parseErr.message.includes("compression")) {
-        throw new Error("Nepodarilo sa načítať font: Súbor pravdepodobne nie je platný font (môže ísť o obrázok alebo iný formát).");
+        throw new Error(t("alert.loadError"));
       }
       
       const view = new DataView(buffer);
       if (buffer.byteLength >= 4) {
         const sig = view.getUint32(0, false);
         if (sig === 0x774F4632) { // 'wOF2'
-          throw new Error("Formát WOFF2 nie je plne podporovaný. Prosím, prekonvertujte font na TTF alebo OTF.");
+          throw new Error(t("alert.woff2"));
         }
       }
       
@@ -1080,7 +1082,7 @@ export function useFontEditor() {
       }
     } catch (err: any) {
       console.error("Failed to load font", err);
-      alert(`Nepodarilo sa načítať font: ${err.message || 'Neznáma chyba'}. Uistite sa, že ide o platný súbor TTF, OTF alebo UFONT.`);
+      alert(t('alert.loadFailed', {msg: err.message || t('alert.unknownError')}));
     }
   }, []);
 
@@ -1172,10 +1174,10 @@ export function useFontEditor() {
         URL.revokeObjectURL(url);
       }
       
-      alert(`Hromadné nasadenie dokončené pre ${slaveFonts.length} rezov.`);
+      alert(t("alert.bulkDeploySuccess", { count: String(slaveFonts.length) }));
     } catch (e) {
       console.error(e);
-      alert("Chyba pri hromadnom nasadení.");
+      alert(t("alert.bulkDeployError"));
     } finally {
       setIsBatchApplying(false);
     }
@@ -1204,10 +1206,10 @@ export function useFontEditor() {
   function detectAnomalies(char: string, info: CharInfo) {
     const anomalies: string[] = [];
     if (info.glyph && info.glyph.advanceWidth === 0) {
-      anomalies.push('Nulová šírka znaku');
+      anomalies.push('anom.zeroWidth');
     }
     if (info.glyph && info.glyph.path.commands.length === 0) {
-      anomalies.push('Prázdny glyf');
+      anomalies.push('anom.emptyGlyph');
     }
     
     // Run shape analysis
@@ -1270,7 +1272,7 @@ export function useFontEditor() {
         }
       });
 
-      if (hasIslands) anomalies.push('Malé izolované časti');
+      if (hasIslands) anomalies.push('anom.islands');
 
       let isComplex = false;
       paths.forEach(p => {
@@ -1285,7 +1287,7 @@ export function useFontEditor() {
         }
       });
 
-      if (isComplex) anomalies.push('Prekrývajúce sa alebo zložité cesty');
+      if (isComplex) anomalies.push('anom.complex');
 
       const bounds = item.bounds;
       
@@ -1313,7 +1315,7 @@ export function useFontEditor() {
             }
           });
           if (overlaps) {
-            anomalies.push('Diakritika sa prekrýva so základným znakom');
+            anomalies.push('anom.overlap');
           }
         }
       }
@@ -1338,11 +1340,11 @@ export function useFontEditor() {
       const expectedTop = hasAscender ? fontMetrics.ascender : targetHeight;
 
       if (Math.abs(baseTop - expectedTop) > 100) {
-        anomalies.push(isLowercase ? 'Malé písmeno má nesprávnu výšku (chová sa ako veľké)' : 'Veľké písmeno má nesprávnu výšku');
+        anomalies.push(isLowercase ? 'anom.heightLower' : 'anom.heightUpper');
       }
 
       if (lsb < -50 || rsb < -50) {
-        anomalies.push('Príliš úzke bočné medzery (presah)');
+        anomalies.push('anom.narrow');
       }
 
       // Calculate hotspots (density)
@@ -1592,7 +1594,7 @@ export function useFontEditor() {
         saveHistory(newChars);
       } catch (err) {
         console.error("Failed to parse JSON", err);
-        alert("Neplatný JSON súbor.");
+        alert(t("alert.invalidJson"));
       }
     };
     reader.readAsText(file);
@@ -1764,7 +1766,7 @@ export function useFontEditor() {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Export failed", err);
-      alert("Nepodarilo sa exportovať font. Pozrite si konzolu pre viac detailov.");
+      alert(t("alert.exportFailed"));
     } finally {
       setIsExporting(false);
       setExportProgress(0);
@@ -1807,7 +1809,7 @@ export function useFontEditor() {
   const batchCleanGlyphs = useCallback(() => {
     Object.keys(chars).forEach(char => {
       const info = chars[char];
-      if (info.anomalies && (info.anomalies.includes('Malé izolované časti') || info.anomalies.includes('Prekrývajúce sa alebo zložité cesty'))) {
+      if (info.anomalies && (info.anomalies.includes('anom.islands') || info.anomalies.includes('anom.complex'))) {
         cleanGlyphPaths(char);
       }
     });
@@ -1921,7 +1923,7 @@ export function useFontEditor() {
       }
 
       // 3. Vyčistiť všetky (Clean glyphs)
-      if (info.anomalies && (info.anomalies.includes('Malé izolované časti') || info.anomalies.includes('Prekrývajúce sa alebo zložité cesty'))) {
+      if (info.anomalies && (info.anomalies.includes('anom.islands') || info.anomalies.includes('anom.complex'))) {
         if (currentGlyph) {
           try {
             const scope = new paper.PaperScope();
@@ -2190,7 +2192,7 @@ export function useFontEditor() {
       await loadLibrary();
     } catch (error) {
       console.error("Error saving diacritic to library:", error);
-      alert("Chyba pri ukladaní diakritiky: " + (error instanceof Error ? error.message : String(error)));
+      alert(t("alert.saveDiacriticError", {msg: error instanceof Error ? error.message : String(error)}));
     }
   }, [selectedChar, chars, font, loadLibrary]);
 

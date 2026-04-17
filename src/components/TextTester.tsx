@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
+import { useTranslation } from '../lib/i18n';
 import * as opentype from 'opentype.js';
 import { CharInfo } from '../hooks/useFontEditor';
 
@@ -19,6 +20,7 @@ const DIACRITICS_TEXT = "Á Ä Č Ď É Ě Í Ĺ Ľ Ň Ó Ô Ŕ Ř Š Ť Ú Ů �
 const DEFAULT_TEST_TEXT = "Vypoj kŕdeľ šťastných dravcov zmäteným hučaním.";
 
 export const TextTester = React.memo(({ font, chars, previewText = DEFAULT_TEST_TEXT, stylisticAdaptation, sizeFilter, wrapText, globalShiftX = 0, selectedChar, activeDragTransform, activeDragTarget }: TextTesterProps) => {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   
@@ -100,7 +102,7 @@ export const TextTester = React.memo(({ font, chars, previewText = DEFAULT_TEST_
           }
           
           isScaledToLowercase = !!info.isScaledToLowercase;
-          hasOverlap = !!info.anomalies?.includes('Diakritika sa prekrýva so základným znakom');
+          hasOverlap = !!info.anomalies?.includes('anom.overlap');
         } else {
           const glyph = font.charToGlyph(char);
           advance = glyph.advanceWidth * scale;

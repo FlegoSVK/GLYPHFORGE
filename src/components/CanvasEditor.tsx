@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from '../lib/i18n';
 import * as opentype from 'opentype.js';
 import { CharInfo } from '../hooks/useFontEditor';
 import { cn } from '../lib/utils';
@@ -49,6 +50,7 @@ export const CanvasEditor = React.memo(function CanvasEditor({
   const diacriticGroupRef = useRef<SVGGElement>(null);
   const baseGroupRef = useRef<SVGGElement>(null);
 
+  const { t } = useTranslation();
   useEffect(() => {
     // Clear pending transform when the actual character data changes
     setPendingTransform(null);
@@ -376,7 +378,7 @@ export const CanvasEditor = React.memo(function CanvasEditor({
                   textAnchor="middle" 
                   className="text-[20px] fill-emerald-500 font-bold tracking-wide"
                 >
-                  OPTIMÁLNA VÝŠKA ({charInfo.metrics.isLowercase ? 'Malé písmená' : 'Veľké písmená'})
+                  OPTIMÁLNA VÝŠKA ({charInfo.metrics.isLowercase ? '{t("canvas.lower")}' : '{t("canvas.upper")}'})
                 </text>
               </g>
             )}
