@@ -282,10 +282,10 @@ function convertPathToQuadratic(path: opentype.Path): opentype.Path {
       currentX = cmd.x;
       currentY = cmd.y;
     } else if (cmd.type === 'C') {
-      // Approximate Cubic to Quadratic bezier
-      const cx = -0.25 * currentX + 0.75 * cmd.x1 + 0.75 * cmd.x2 - 0.25 * cmd.x;
-      const cy = -0.25 * currentY + 0.75 * cmd.y1 + 0.75 * cmd.y2 - 0.25 * cmd.y;
-      newPath.quadraticCurveTo(cx, cy, cmd.x, cmd.y);
+      // Approximate Cubic to Quadratic bezier and MUST round to integer for TrueType
+      const cx = Math.round(-0.25 * currentX + 0.75 * cmd.x1 + 0.75 * cmd.x2 - 0.25 * cmd.x);
+      const cy = Math.round(-0.25 * currentY + 0.75 * cmd.y1 + 0.75 * cmd.y2 - 0.25 * cmd.y);
+      newPath.quadraticCurveTo(cx, cy, Math.round(cmd.x), Math.round(cmd.y));
       currentX = cmd.x;
       currentY = cmd.y;
     } else if (cmd.type === 'Q') {
@@ -505,16 +505,27 @@ function mergeGlyphs(font: opentype.Font, info: CharInfo, applyStylisticAdaptati
     }
   }
 
+  const roundedCommands = mergedCommands.map(cmd => {
+    const newCmd = { ...cmd };
+    if ('x' in newCmd && newCmd.x !== undefined) newCmd.x = Math.round(newCmd.x);
+    if ('y' in newCmd && newCmd.y !== undefined) newCmd.y = Math.round(newCmd.y);
+    if ('x1' in newCmd && newCmd.x1 !== undefined) newCmd.x1 = Math.round(newCmd.x1);
+    if ('y1' in newCmd && newCmd.y1 !== undefined) newCmd.y1 = Math.round(newCmd.y1);
+    if ('x2' in newCmd && newCmd.x2 !== undefined) newCmd.x2 = Math.round(newCmd.x2);
+    if ('y2' in newCmd && newCmd.y2 !== undefined) newCmd.y2 = Math.round(newCmd.y2);
+    return newCmd;
+  });
+
   const mergedPath = new opentype.Path();
   (mergedPath as any).unitsPerEm = font.unitsPerEm;
-  mergedPath.commands = mergedCommands;
+  mergedPath.commands = roundedCommands;
   
   const finalPath = font.outlinesFormat === 'truetype' ? convertPathToQuadratic(mergedPath) : mergedPath;
   
   return new opentype.Glyph({
     name: info.char,
     unicode: info.char.charCodeAt(0),
-    advanceWidth: finalAdvanceWidth,
+    advanceWidth: Math.round(finalAdvanceWidth),
     path: finalPath
   });
 }
@@ -1728,7 +1739,10 @@ export function useFontEditor() {
         font.tables.post.names = originalPostNames;
       }
 
-      const blob = new Blob([buffer], { type: 'font/ttf' });
+      // opentype.js exportuje fonty interne vo formáte OpenType (CFF). 
+      // V prípade bežného použitia vo Windows je to ".otf", ale niektoré programy
+      // (ako Unreal Engine) používajú prípony ako ".ufont", ktoré musíme zachovať.
+      const blob = new Blob([buffer], { type: 'application/octet-stream' });
       
       // Save used diacritics to library (avoiding duplicates by path)
       const existingPaths = new Set(libraryDiacritics.map(d => d.path));
@@ -1761,7 +1775,7 @@ export function useFontEditor() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = fontName;
+      a.download = fontName; // Zachová presne pôvodný názov
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
