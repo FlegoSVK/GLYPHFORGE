@@ -1628,6 +1628,7 @@ export function useFontEditor() {
       const originalMaxpNumGlyphs = font.tables.maxp ? font.tables.maxp.numGlyphs : undefined;
       const originalPostNumGlyphs = font.tables.post ? font.tables.post.numberOfGlyphs : undefined;
       const originalPostNames = font.tables.post && font.tables.post.names ? [...font.tables.post.names] : undefined;
+      const originalGsub = font.tables.gsub;
       
       const entries = Object.entries(chars);
       let processed = 0;
@@ -1714,6 +1715,19 @@ export function useFontEditor() {
         font.tables.post.numberOfGlyphs = glyphSet.length;
       }
 
+      // Sanitize GSUB table to avoid "Unable to write GSUB lookup type X tables" crash
+      if (font.tables.gsub && font.tables.gsub.lookups) {
+        const supportedTypes = [1, 2, 3, 4, 6];
+        const hasUnsupported = font.tables.gsub.lookups.some(
+          (lookup: any) => !supportedTypes.includes(lookup.lookupType)
+        );
+        
+        if (hasUnsupported) {
+          console.warn("Unsupported GSUB lookup types found. Removing GSUB table during export to prevent crash.");
+          delete font.tables.gsub;
+        }
+      }
+
       setExportProgress(50);
       // Give browser a solid chunk of time to paint the 50% progress before the heavy synchronous toArrayBuffer
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -1737,6 +1751,9 @@ export function useFontEditor() {
       }
       if (font.tables.post && originalPostNames !== undefined) {
         font.tables.post.names = originalPostNames;
+      }
+      if (originalGsub !== undefined) {
+        font.tables.gsub = originalGsub;
       }
 
       // opentype.js exportuje fonty interne vo formáte OpenType (CFF). 
